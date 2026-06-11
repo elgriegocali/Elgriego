@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="El Griego" />
+<title>El Griego Cali</title>
+<style>
+:root{
+  --azul:#2742D8; --azul-osc:#16245F; --cielo:#8FD0E8;
+  --marmol:#F6F5F0; --carta:#FFFFFF; --tinta:#1A2238; --gris:#6B7280;
+  --oliva:#76814B; --oliva-osc:#4F5A2E; --oliva-suave:#EEF0E2;
+  --oro:#C9920E; --oro-suave:#FBF3DC;
+  --rojo:#C04A3A; --rojo-suave:#FBE9E5;
+  --azul-suave:#E8ECFC; --linea:#E5E3DB;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;background:var(--marmol);color:var(--tinta);font-size:15px;line-height:1.45}
+.shell{max-width:520px;margin:0 auto;width:100%;min-height:100vh;display:flex;flex-direction:column;background:var(--marmol)}
+.header{background:var(--azul);color:#fff;padding:16px 16px 12px}
+.header h1{font-size:22px;letter-spacing:.04em;display:flex;align-items:center;gap:8px;font-weight:700}
+.header .sub{font-size:11px;opacity:.85;letter-spacing:.14em;text-transform:uppercase;margin-top:2px}
+.eye{width:18px;height:18px;border-radius:50%;background:radial-gradient(circle at 50% 50%, #14213D 0 22%, #fff 22% 42%, var(--cielo) 42% 72%, #fff 72% 100%);flex:none;box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+.greca{height:8px;background:repeating-linear-gradient(90deg,var(--azul) 0 4px,transparent 4px 8px),repeating-linear-gradient(0deg,var(--azul) 0 2px,transparent 2px 5px),var(--cielo);border-bottom:1px solid var(--linea)}
+.main{flex:1;padding:12px 12px 20px;display:flex;flex-direction:column;gap:12px}
+.tabbar{position:sticky;bottom:0;z-index:30;background:var(--carta);border-top:1px solid var(--linea);display:flex;box-shadow:0 -4px 16px rgba(20,33,61,.06);padding-bottom:env(safe-area-inset-bottom)}
+.tabbar button{flex:1;background:none;border:none;font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--gris);padding:8px 2px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;text-transform:uppercase;font-family:inherit}
+.tabbar button .ic{font-size:16px;line-height:1}
+.tabbar button.on{color:var(--azul)}
+.tabbar button.on::after{content:"";width:14px;height:2px;border-radius:2px;background:var(--oliva)}
+.card{background:var(--carta);border:1px solid var(--linea);border-radius:12px;padding:12px}
+.card h2{font-size:15px;font-weight:800;margin-bottom:8px;color:var(--azul-osc)}
+.kpis{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.kpi{background:var(--carta);border:1px solid var(--linea);border-radius:12px;padding:10px 8px;text-align:center}
+.kpi .lbl{font-size:9.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--gris)}
+.kpi .val{font-size:18px;margin-top:3px;font-weight:800;color:var(--azul-osc);font-variant-numeric:tabular-nums}
+.kpi.oliva .val{color:var(--oliva-osc)}
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 0}
+.muted{color:var(--gris);font-size:13px}
+.money{font-variant-numeric:tabular-nums;font-weight:800}
+.chip{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;letter-spacing:.04em;padding:2px 7px;border-radius:999px;text-transform:uppercase}
+.chip.estrella{background:var(--oro-suave);color:var(--oro)}
+.chip.caballo{background:var(--azul-suave);color:var(--azul)}
+.chip.rompe{background:var(--oliva-suave);color:var(--oliva-osc)}
+.chip.neutro{background:#EFEFEA;color:var(--gris)}
+.chip.ok{background:var(--oliva-suave);color:var(--oliva-osc)}
+.chip.warn{background:var(--oro-suave);color:var(--oro)}
+.chip.alerta{background:var(--rojo-suave);color:var(--rojo)}
+.pills{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0}
+.pill{border:1px solid var(--linea);background:var(--carta);border-radius:999px;padding:5px 10px;font-size:11.5px;font-weight:700;color:var(--gris);cursor:pointer;font-family:inherit}
+.pill.on{background:var(--azul);border-color:var(--azul);color:#fff}
+label.f{display:block;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--gris);margin:8px 0 3px}
+input.f,select.f,textarea.f{width:100%;border:1px solid var(--linea);border-radius:9px;padding:9px 10px;font-family:inherit;font-size:16px;background:#fff;color:var(--tinta)}
+input.f:focus,select.f:focus,textarea.f:focus{outline:2px solid var(--cielo);border-color:var(--azul)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;border:none;border-radius:10px;padding:11px 14px;font-family:inherit;font-weight:800;font-size:13px;cursor:pointer;letter-spacing:.02em;text-decoration:none}
+.btn.primario{background:var(--azul);color:#fff;width:100%}
+.btn.oliva{background:var(--oliva);color:#fff}
+.btn.fant{background:transparent;color:var(--rojo);padding:6px 8px;font-size:11px}
+.btn.wa{background:#1FAF54;color:#fff;padding:7px 11px;font-size:11px;border-radius:8px}
+.qty{display:flex;align-items:center;gap:6px}
+.qty button{width:30px;height:30px;border-radius:8px;border:1px solid var(--linea);background:#fff;font-size:16px;font-weight:800;color:var(--azul);cursor:pointer}
+.qty span{min-width:18px;text-align:center;font-weight:800;font-variant-numeric:tabular-nums;font-size:14px}
+.item-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px dashed var(--linea);gap:8px}
+.item-row:last-child{border-bottom:none}
+.bar{height:6px;border-radius:5px;background:#ECEBE4;overflow:hidden;margin-top:3px}
+.bar>i{display:block;height:100%;border-radius:5px;background:var(--azul)}
+.bar>i.oliva{background:var(--oliva)}
+.pedido{border-left:3px solid var(--azul)}
+.pedido.entregado{border-left-color:var(--oliva)}
+.pedido.cancelado{border-left-color:var(--rojo);opacity:.7}
+.banner{background:var(--oliva-suave);border:1px solid #D8DCC2;color:var(--oliva-osc);border-radius:9px;padding:8px 10px;font-size:12px;font-weight:700}
+.aviso{background:var(--oro-suave);border:1px solid #EAD9A8;color:var(--oro);border-radius:9px;padding:8px 10px;font-size:12px;font-weight:700}
+.vacio{text-align:center;padding:28px 12px;color:var(--gris)}
+.vacio .eye{margin:0 auto 8px;width:26px;height:26px}
+.small{font-size:12px}
+hr.s{border:none;border-top:1px dashed var(--linea);margin:8px 0}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="header">
+    <h1><span class="eye"></span>EL GRIEGO</h1>
+    <div class="sub">Auténtica cocina griega · Cali</div>
+    <div class="sub" id="modo" style="margin-top:4px;text-transform:none;letter-spacing:.02em"></div>
+  </header>
+  <div class="greca"></div>
+  <div class="main" id="main"><div class="vacio">Cargando…</div></div>
+  <nav class="tabbar" id="tabbar">
+    <button data-tab="hoy"><span class="ic">◉</span>Hoy</button>
+    <button data-tab="pedidos"><span class="ic">▤</span>Pedidos</button>
+    <button data-tab="nuevo"><span class="ic">＋</span>Nuevo</button>
+    <button data-tab="menu"><span class="ic">✦</span>Menú</button>
+    <button data-tab="clientes"><span class="ic">♥</span>Clientes</button>
+  </nav>
+</div>
+
+<script>
+/* ================= DATOS ================= */
+var PRODUCTOS = [
+ {key:'gyros_cerdo',  nombre:'Gyros de Cerdo',        precio:24000, unidad:'por gyro',      fc:15.2, clase:'Estrella'},
+ {key:'gyros_pollo',  nombre:'Gyros de Pollo',        precio:24000, unidad:'por gyro',      fc:18.0, clase:'Estrella'},
+ {key:'kebab',        nombre:'Kebab Estilo Thanasis', precio:24000, unidad:'por porción',   fc:19.1, clase:'Rompecabezas', destacar:true},
+ {key:'mousaka',      nombre:'Mousaka',               precio:30000, unidad:'280 g',         fc:null},
+ {key:'pastitsio',    nombre:'Pastitsio',             precio:30000, unidad:'380 g',         fc:null},
+ {key:'spanako',      nombre:'Spanakopitakia',        precio:22000, unidad:'6 empanadas',   fc:null},
+ {key:'tiro',         nombre:'Tiropitakia',           precio:22000, unidad:'6 empanadas',   fc:null},
+ {key:'praso',        nombre:'Prasopitakia',          precio:24000, unidad:'6 pastelitos',  fc:null},
+ {key:'ens_griega',   nombre:'Ensalada Griega',       precio:20000, unidad:'250 g',         fc:null},
+ {key:'dakos',        nombre:'Ensalada Dakos',        precio:20000, unidad:'250 g',         fc:null},
+ {key:'gambas',       nombre:'Gambas Saganaki',       precio:34000, unidad:'250 g',         fc:null, clase:'Ancla de precio'},
+ {key:'pita',         nombre:'Pan Pita',              precio:12500, unidad:'5 panes',       fc:20.8, clase:'Caballo de batalla'},
+ {key:'tzatziki',     nombre:'Tzatziki',              precio:18000, unidad:'200 g',         fc:22.4, clase:'Caballo de batalla', nota:'Candidato a 20.000'}
+];
+var FC_ESTIMADO = 28;
+var UMBRAL = 150000;
+var TIPOS = ['Domicilio','Catering','Pack Congelado'];
+var CANALES = ['WhatsApp','Instagram','Rappi','iFood','Referido'];
+var ESTADOS = ['Nuevo','Confirmado','En cocina','Despachado','Entregado','Cancelado'];
+
+function fmt(n){ return Math.round(n).toLocaleString('es-CO'); }
+function prod(k){ for(var i=0;i<PRODUCTOS.length;i++) if(PRODUCTOS[i].key===k) return PRODUCTOS[i]; return null; }
+function fcDe(p){ return p.fc!=null ? p.fc : FC_ESTIMADO; }
+function hoyISO(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function mesDe(f){ return (f||'').slice(0,7); }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function calc(items){
+  var venta=0, costo=0;
+  (items||[]).forEach(function(i){
+    var p=prod(i.key); if(!p) return;
+    venta += p.precio*i.qty;
+    costo += p.precio*i.qty*fcDe(p)/100;
+  });
+  return {venta:venta, costo:costo, margen:venta-costo, fcPct: venta? costo/venta*100 : 0};
+}
+function waLink(tel, texto){
+  var t=(tel||'').replace(/\D/g,''); if(!t) return null;
+  if(t.indexOf('57')!==0) t='57'+t;
+  return 'https://wa.me/'+t+(texto?('?text='+encodeURIComponent(texto)):'');
+}
+
+/* ============ ALMACENAMIENTO HÍBRIDO ============
+   1) window.storage  -> dentro de Claude (persiste en tu cuenta)
+   2) localStorage    -> archivo abierto en un navegador / URL propia
+   3) memoria         -> último recurso (solo la sesión actual)  */
+var memoria = null;
+var modoGuardado = 'sesion'; // 'claude' | 'dispositivo' | 'sesion'
+
+function localStorageDisponible(){
+  try{ localStorage.setItem('__eg_test','1'); localStorage.removeItem('__eg_test'); return true; }
+  catch(e){ return false; }
+}
+function mostrarModo(){
+  var m=document.getElementById('modo'); if(!m) return;
+  if(modoGuardado==='claude') m.textContent='✓ Datos guardados en Claude';
+  else if(modoGuardado==='dispositivo') m.textContent='✓ Datos guardados en este dispositivo';
+  else m.textContent='⚠ Sin guardado permanente — usa “Copia de seguridad” en la pestaña Menú';
+}
+function cargarPedidos(cb){
+  if (window.storage && typeof window.storage.get==='function'){
+    window.storage.get('elgriego_pedidos').then(function(r){
+      var d=[]; try{ if(r && r.value) d=JSON.parse(r.value); }catch(e){}
+      modoGuardado='claude'; mostrarModo();
+      cb(Array.isArray(d)?d:[]);
+    }).catch(function(){
+      /* la clave aún no existe — seguimos en Claude */
+      modoGuardado='claude'; mostrarModo();
+      cb([]);
+    });
+    return;
+  }
+  if (localStorageDisponible()){
+    modoGuardado='dispositivo'; mostrarModo();
+    try{
+      var v=localStorage.getItem('elgriego_pedidos');
+      cb(v? JSON.parse(v) : []); return;
+    }catch(e){ cb([]); return; }
+  }
+  modoGuardado='sesion'; mostrarModo();
+  cb(memoria||[]);
+}
+function guardarPedidos(d){
+  var s=JSON.stringify(d);
+  memoria=d;
+  if (modoGuardado==='claude' && window.storage && typeof window.storage.set==='function'){
+    window.storage.set('elgriego_pedidos', s).catch(function(){});
+    return;
+  }
+  if (modoGuardado==='dispositivo'){
+    try{ localStorage.setItem('elgriego_pedidos', s); }catch(e){}
+  }
+}
+
+/* ================= APP ================= */
+var pedidos=[];
+var main=document.getElementById('main');
+var tabs=document.getElementById('tabbar').querySelectorAll('button');
+var tabActual='hoy';
+var filtroPedidos='Activos';
+var abiertos={};
+
+function render(tab){
+  tabActual=tab;
+  for(var i=0;i<tabs.length;i++) tabs[i].classList.toggle('on', tabs[i].getAttribute('data-tab')===tab);
+  main.innerHTML='';
+  if(tab==='hoy') renderHoy();
+  else if(tab==='pedidos') renderPedidos();
+  else if(tab==='nuevo') renderNuevo();
+  else if(tab==='menu') renderMenu();
+  else if(tab==='clientes') renderClientes();
+  window.scrollTo(0,0);
+}
+for(var ti=0;ti<tabs.length;ti++){
+  (function(b){ b.addEventListener('click', function(){ render(b.getAttribute('data-tab')); }); })(tabs[ti]);
+}
+
+function el(htmlStr){
+  var d=document.createElement('div');
+  d.innerHTML=htmlStr.trim();
+  return d.firstElementChild;
+}
+
+/* ================= HOY ================= */
+function renderHoy(){
+  var hoy=hoyISO(), mes=mesDe(hoy);
+  var validos=pedidos.filter(function(p){return p.estado!=='Cancelado';});
+  var deHoy=validos.filter(function(p){return p.fecha===hoy;});
+  var delMes=validos.filter(function(p){return mesDe(p.fecha)===mes;});
+  var tHoy=0; deHoy.forEach(function(p){ tHoy+=calc(p.items).venta; });
+  var tMes=0,cMes=0; delMes.forEach(function(p){ var c=calc(p.items); tMes+=c.venta; cMes+=c.costo; });
+  var pendCobro=validos.filter(function(p){return p.pago!=='Pagado';});
+  var enProceso=validos.filter(function(p){return p.estado!=='Entregado';});
+
+  main.appendChild(el('<div class="kpis">'
+    +'<div class="kpi"><div class="lbl">Ventas hoy</div><div class="val">'+fmt(tHoy)+'</div></div>'
+    +'<div class="kpi"><div class="lbl">Ventas mes</div><div class="val">'+fmt(tMes)+'</div></div>'
+    +'<div class="kpi oliva"><div class="lbl">Margen mes</div><div class="val">'+fmt(tMes-cMes)+'</div></div>'
+    +'</div>'));
+
+  if(enProceso.length>0){
+    var b=el('<div class="banner" style="cursor:pointer">'+enProceso.length+' pedido'+(enProceso.length>1?'s':'')+' en proceso · toca para ver</div>');
+    b.addEventListener('click', function(){ render('pedidos'); });
+    main.appendChild(b);
+  }
+  if(pendCobro.length>0){
+    var tot=0; pendCobro.forEach(function(p){ tot+=calc(p.items).venta; });
+    main.appendChild(el('<div class="aviso">'+pendCobro.length+' con pago pendiente — total '+fmt(tot)+'</div>'));
+  }
+
+  var cnt={};
+  delMes.forEach(function(p){ p.items.forEach(function(it){ cnt[it.key]=(cnt[it.key]||0)+it.qty; }); });
+  var top=Object.keys(cnt).map(function(k){return [k,cnt[k]];}).sort(function(a,b){return b[1]-a[1];}).slice(0,5);
+
+  var card=el('<div class="card"><h2>Lo más pedido este mes</h2></div>');
+  if(top.length===0){
+    card.appendChild(el('<div class="muted">Aún no hay pedidos este mes. Registra el primero en “Nuevo”.</div>'));
+  } else {
+    var maxTop=top[0][1];
+    top.forEach(function(par){
+      var p=prod(par[0]);
+      card.appendChild(el('<div style="margin-bottom:8px">'
+        +'<div class="row small"><span style="font-weight:700">'+esc(p.nombre)
+        +(p.destacar?' <span class="chip rompe">impulsar</span>':'')
+        +'</span><span class="muted">'+par[1]+' und</span></div>'
+        +'<div class="bar"><i style="width:'+(par[1]/maxTop*100)+'%"></i></div></div>'));
+    });
+  }
+  main.appendChild(card);
+
+  var can={};
+  delMes.forEach(function(p){ can[p.canal]=(can[p.canal]||0)+calc(p.items).venta; });
+  var canales=Object.keys(can).map(function(c){return [c,can[c]];}).sort(function(a,b){return b[1]-a[1];});
+  if(canales.length>0){
+    var c2=el('<div class="card"><h2>Ventas por canal · mes</h2></div>');
+    canales.forEach(function(par){
+      c2.appendChild(el('<div style="margin-bottom:8px">'
+        +'<div class="row small"><span style="font-weight:700">'+esc(par[0])+'</span><span class="money">'+fmt(par[1])+'</span></div>'
+        +'<div class="bar"><i class="'+(par[0]==='WhatsApp'?'oliva':'')+'" style="width:'+(par[1]/canales[0][1]*100)+'%"></i></div></div>'));
+    });
+    c2.appendChild(el('<div class="muted small" style="margin-top:6px">Instagram atrae — WhatsApp cierra.</div>'));
+    main.appendChild(c2);
+  }
+
+  if(tMes>0){
+    var pct=cMes/tMes*100;
+    main.appendChild(el('<div class="card"><h2>Food cost del mes</h2>'
+      +'<div class="row"><span class="muted">Costo estimado de ingredientes</span><span class="money">'+fmt(cMes)+'</span></div>'
+      +'<div class="row"><span class="muted">% sobre ventas</span><span class="chip '+(pct<=20?'ok':(pct<=24?'warn':'alerta'))+'">'+pct.toFixed(1)+'% · meta ≤20%</span></div>'
+      +'<div class="muted small" style="margin-top:8px">Los items sin costear usan un estimado de '+FC_ESTIMADO+'%.</div></div>'));
+  }
+}
+
+/* ================= PEDIDOS ================= */
+function renderPedidos(){
+  var pills=el('<div class="pills"></div>');
+  ['Activos','Entregado','Cancelado','Todos'].forEach(function(f){
+    var b=el('<button class="pill'+(filtroPedidos===f?' on':'')+'">'+f+'</button>');
+    b.addEventListener('click', function(){ filtroPedidos=f; render('pedidos'); });
+    pills.appendChild(b);
+  });
+  main.appendChild(pills);
+
+  var lista=pedidos.filter(function(p){
+    if(filtroPedidos==='Activos') return p.estado!=='Entregado' && p.estado!=='Cancelado';
+    if(filtroPedidos==='Todos') return true;
+    return p.estado===filtroPedidos;
+  });
+
+  if(lista.length===0){
+    var v=el('<div class="vacio card"><div class="eye"></div>No hay pedidos aquí.<br/><button class="btn oliva" style="margin-top:10px">Registrar pedido</button></div>');
+    v.querySelector('button').addEventListener('click', function(){ render('nuevo'); });
+    main.appendChild(v);
+    return;
+  }
+
+  lista.forEach(function(p){ main.appendChild(tarjetaPedido(p)); });
+}
+
+function tarjetaPedido(p){
+  var t=calc(p.items);
+  var card=el('<div class="card pedido'+(p.estado==='Entregado'?' entregado':(p.estado==='Cancelado'?' cancelado':''))+'"></div>');
+
+  var top=el('<div style="cursor:pointer">'
+    +'<div class="row" style="align-items:flex-start">'
+    +'<div><div style="font-weight:800;font-size:14px">'+esc(p.cliente||'Sin nombre')+'</div>'
+    +'<div class="muted small">'+esc(p.fecha)+' · '+esc(p.tipo)+' · '+esc(p.canal)+'</div></div>'
+    +'<div style="text-align:right"><div class="money">'+fmt(t.venta+(p.domicilio||0))+'</div>'
+    +'<span class="chip '+(p.pago==='Pagado'?'ok':'warn')+'">'+esc(p.pago||'Pendiente')+'</span></div>'
+    +'</div>'
+    +'<div style="margin-top:4px"><span class="chip '+(p.estado==='Entregado'?'ok':(p.estado==='Cancelado'?'alerta':'neutro'))+'">'+esc(p.estado)+'</span>'
+    +(t.venta>=UMBRAL && p.tipo==='Domicilio' ? ' <span class="chip caballo">domicilio gratis</span>':'')
+    +'</div></div>');
+  card.appendChild(top);
+
+  /* el detalle se arma COMPLETO primero, y solo después se conectan los botones */
+  var s='<hr class="s">';
+  p.items.forEach(function(it){
+    var pr=prod(it.key);
+    if(pr) s+='<div class="row small"><span>'+it.qty+' × '+esc(pr.nombre)+'</span><span class="money">'+fmt(pr.precio*it.qty)+'</span></div>';
+  });
+  if((p.domicilio||0)>0) s+='<div class="row small"><span>Domicilio</span><span class="money">'+fmt(p.domicilio)+'</span></div>';
+  s+='<hr class="s"><div class="row small"><span class="muted">Margen estimado</span><span class="money" style="color:var(--oliva-osc)">'+fmt(t.margen)+' · FC '+t.fcPct.toFixed(1)+'%</span></div>';
+  if(p.notas) s+='<div class="muted small" style="margin-top:6px">📝 '+esc(p.notas)+'</div>';
+  s+='<label class="f">Estado</label><div class="pills">';
+  ESTADOS.forEach(function(e){ s+='<button class="pill'+(p.estado===e?' on':'')+'" data-estado="'+e+'">'+e+'</button>'; });
+  s+='</div><label class="f">Pago</label><div class="pills">';
+  ['Pendiente','Pagado'].forEach(function(e){ s+='<button class="pill'+(p.pago===e?' on':'')+'" data-pago="'+e+'">'+e+'</button>'; });
+  s+='</div><div class="row" style="margin-top:10px">';
+  var wa=waLink(p.telefono,'');
+  s+= wa? '<a class="btn wa" href="'+wa+'" target="_blank" rel="noreferrer">WhatsApp</a>' : '<span></span>';
+  s+='<button class="btn fant" data-borrar="1">Eliminar</button></div>';
+
+  var det=el('<div style="display:'+(abiertos[p.id]?'block':'none')+';margin-top:6px">'+s+'</div>');
+
+  top.addEventListener('click', function(){
+    abiertos[p.id]=!abiertos[p.id];
+    det.style.display=abiertos[p.id]?'block':'none';
+  });
+
+  var botonesEstado=det.querySelectorAll('[data-estado]');
+  for(var i=0;i<botonesEstado.length;i++){
+    (function(b){
+      b.addEventListener('click', function(){
+        p.estado=b.getAttribute('data-estado');
+        guardarPedidos(pedidos);
+        render('pedidos');
+      });
+    })(botonesEstado[i]);
+  }
+  var botonesPago=det.querySelectorAll('[data-pago]');
+  for(var j=0;j<botonesPago.length;j++){
+    (function(b){
+      b.addEventListener('click', function(){
+        p.pago=b.getAttribute('data-pago');
+        guardarPedidos(pedidos);
+        render('pedidos');
+      });
+    })(botonesPago[j]);
+  }
+  det.querySelector('[data-borrar]').addEventListener('click', function(){
+    if(!confirm('¿Eliminar este pedido?')) return;
+    pedidos=pedidos.filter(function(x){return x.id!==p.id;});
+    guardarPedidos(pedidos);
+    render('pedidos');
+  });
+
+  card.appendChild(det);
+  return card;
+}
+
+/* ================= NUEVO ================= */
+function renderNuevo(){
+  var items={}; var domicilioManual=0;
+
+  var card1=el('<div class="card"><h2>Nuevo pedido</h2>'
+    +'<label class="f">Cliente</label><input class="f" id="n-cliente" placeholder="Nombre">'
+    +'<label class="f">WhatsApp</label><input class="f" id="n-tel" placeholder="310 653 1071" inputmode="tel">'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    +'<div><label class="f">Tipo</label><select class="f" id="n-tipo">'+TIPOS.map(function(t){return '<option>'+t+'</option>';}).join('')+'</select></div>'
+    +'<div><label class="f">Canal</label><select class="f" id="n-canal">'+CANALES.map(function(c){return '<option>'+c+'</option>';}).join('')+'</select></div>'
+    +'</div>'
+    +'<label class="f">Fecha de entrega</label><input class="f" type="date" id="n-fecha" value="'+hoyISO()+'">'
+    +'</div>');
+  main.appendChild(card1);
+
+  var card2=el('<div class="card"><h2>Productos</h2></div>');
+  PRODUCTOS.forEach(function(p){
+    var fila=el('<div class="item-row">'
+      +'<div><div style="font-weight:700">'+esc(p.nombre)+'</div>'
+      +'<div class="muted small">'+fmt(p.precio)+' · '+esc(p.unidad)+'</div></div>'
+      +'<div class="qty"><button type="button" data-d="-1">−</button><span>0</span><button type="button" data-d="1">+</button></div>'
+      +'</div>');
+    var span=fila.querySelector('.qty span');
+    var botones=fila.querySelectorAll('.qty button');
+    for(var i=0;i<botones.length;i++){
+      (function(b){
+        b.addEventListener('click', function(){
+          var q=Math.max(0,(items[p.key]||0)+parseInt(b.getAttribute('data-d'),10));
+          if(q===0) delete items[p.key]; else items[p.key]=q;
+          span.textContent=q;
+          actualizarTotal();
+        });
+      })(botones[i]);
+    }
+    card2.appendChild(fila);
+  });
+  main.appendChild(card2);
+
+  var card3=el('<div class="card">'
+    +'<div class="row"><span class="muted">Subtotal productos</span><span class="money" id="n-subtotal">0</span></div>'
+    +'<div id="n-dom"></div>'
+    +'<div class="row" style="margin-top:6px"><span class="muted">Margen estimado</span><span class="money" style="color:var(--oliva-osc)" id="n-margen">0</span></div>'
+    +'<label class="f">Notas</label><textarea class="f" rows="2" id="n-notas" placeholder="Dirección, hora, instrucciones…"></textarea>'
+    +'<button class="btn primario" id="n-guardar" style="margin-top:12px">Guardar pedido</button>'
+    +'<button class="btn fant" id="n-cancelar" style="width:100%;margin-top:6px;color:var(--gris)">Cancelar</button>'
+    +'</div>');
+  main.appendChild(card3);
+
+  function listaItems(){ return Object.keys(items).map(function(k){return {key:k, qty:items[k]};}); }
+
+  function actualizarTotal(){
+    var t=calc(listaItems());
+    var tipo=card1.querySelector('#n-tipo').value;
+    card3.querySelector('#n-subtotal').textContent=fmt(t.venta);
+    card3.querySelector('#n-margen').textContent=fmt(t.margen);
+    var dom=card3.querySelector('#n-dom');
+    if(tipo==='Domicilio'){
+      if(t.venta>=UMBRAL){
+        dom.innerHTML='<div class="banner" style="margin-top:8px">Domicilio gratis — el pedido supera '+fmt(UMBRAL)+'</div>';
+        domicilioManual=0;
+      } else {
+        dom.innerHTML='<div class="aviso" style="margin-top:8px">Faltan '+fmt(UMBRAL-t.venta)+' para domicilio gratis — sugiere completar con Pan Pita o Tzatziki.</div>'
+          +'<label class="f">Valor domicilio</label><input class="f" inputmode="numeric" id="n-domval" placeholder="0" value="'+(domicilioManual||'')+'">';
+        dom.querySelector('#n-domval').addEventListener('input', function(e){
+          domicilioManual=parseInt(e.target.value,10)||0;
+        });
+      }
+    } else { dom.innerHTML=''; }
+  }
+  card1.querySelector('#n-tipo').addEventListener('change', actualizarTotal);
+  actualizarTotal();
+
+  card3.querySelector('#n-cancelar').addEventListener('click', function(){ render('pedidos'); });
+  card3.querySelector('#n-guardar').addEventListener('click', function(){
+    var li=listaItems();
+    if(li.length===0){ alert('Agrega al menos un producto.'); return; }
+    var t=calc(li);
+    var tipo=card1.querySelector('#n-tipo').value;
+    pedidos.unshift({
+      id: Date.now().toString(36)+Math.random().toString(36).slice(2,6),
+      cliente: card1.querySelector('#n-cliente').value.trim(),
+      telefono: card1.querySelector('#n-tel').value.trim(),
+      tipo: tipo,
+      canal: card1.querySelector('#n-canal').value,
+      fecha: card1.querySelector('#n-fecha').value || hoyISO(),
+      notas: card3.querySelector('#n-notas').value.trim(),
+      domicilio: (tipo==='Domicilio' && t.venta<UMBRAL) ? domicilioManual : 0,
+      estado:'Nuevo', pago:'Pendiente', items: li
+    });
+    guardarPedidos(pedidos);
+    filtroPedidos='Activos';
+    render('pedidos');
+  });
+}
+
+/* ================= MENÚ ================= */
+function renderMenu(){
+  var mes=mesDe(hoyISO());
+  var cnt={};
+  pedidos.filter(function(p){return mesDe(p.fecha)===mes && p.estado!=='Cancelado';})
+    .forEach(function(p){ p.items.forEach(function(it){ cnt[it.key]=(cnt[it.key]||0)+it.qty; }); });
+
+  function chipClase(c){
+    if(c==='Estrella') return 'estrella';
+    if(c==='Caballo de batalla') return 'caballo';
+    if(c==='Rompecabezas') return 'rompe';
+    return 'neutro';
+  }
+  function fila(p){
+    return '<div class="item-row"><div>'
+      +'<div style="font-weight:700">'+esc(p.nombre)+(p.destacar?' <span class="chip rompe">dar énfasis</span>':'')+'</div>'
+      +'<div class="muted small">'+fmt(p.precio)+' · '+esc(p.unidad)+(p.nota?' · '+esc(p.nota):'')+'</div>'
+      +'<div style="margin-top:3px">'
+      +(p.clase?'<span class="chip '+chipClase(p.clase)+'">'+esc(p.clase)+'</span> ':'')
+      +(p.fc!=null
+        ? '<span class="chip '+(p.fc<=20?'ok':'warn')+'">FC '+p.fc+'%</span>'
+        : '<span class="chip alerta">sin costear</span>')
+      +'</div></div>'
+      +'<div class="muted small" style="text-align:right;min-width:50px">'+(cnt[p.key]||0)+' und<br/>mes</div></div>';
+  }
+
+  var costeados=PRODUCTOS.filter(function(p){return p.fc!=null;});
+  var pendientes=PRODUCTOS.filter(function(p){return p.fc==null;});
+
+  main.appendChild(el('<div class="card"><h2>Costeados · meta ≤20% food cost</h2>'+costeados.map(fila).join('')+'</div>'));
+  main.appendChild(el('<div class="card"><h2>Pendientes de costear ('+pendientes.length+')</h2>'
+    +'<div class="muted small" style="margin-bottom:6px">Empezar por Mousaka y Spanakopitakia. Mientras tanto se usa '+FC_ESTIMADO+'% estimado.</div>'
+    +pendientes.map(fila).join('')+'</div>'));
+  main.appendChild(el('<div class="card"><h2>Recordatorios de menú</h2>'
+    +'<div class="small" style="display:grid;gap:6px">'
+    +'<div>✦ Gambas Saganaki es <b>ancla de precio</b> — debe abrir su sección, no bajar el precio.</div>'
+    +'<div>✦ Kebab Thanasis: buen margen, baja visibilidad — darle énfasis en menú y contenido.</div>'
+    +'<div>✦ Tzatziki: evaluar subida a 20.000 (FC actual 22,4%).</div>'
+    +'<div>✦ Secciones de 5–8 items, sin símbolo de moneda ni decimales.</div>'
+    +'</div></div>'));
+  main.appendChild(backupCard());
+}
+
+/* ============ COPIA DE SEGURIDAD ============ */
+function backupCard(){
+  var card=el('<div class="card"><h2>Copia de seguridad</h2>'
+    +'<div class="muted small" style="margin-bottom:6px">“Crear copia” genera un texto con todos tus pedidos: cópialo y guárdalo donde quieras (Notas, WhatsApp contigo misma). Para pasar los datos a otro dispositivo o recuperarlos, pega ese texto aquí y toca “Restaurar”.</div>'
+    +'<textarea class="f" rows="3" id="bk-txt" placeholder="Aquí aparece tu copia / pega aquí para restaurar"></textarea>'
+    +'<div style="display:flex;gap:8px;margin-top:8px">'
+    +'<button class="btn oliva" id="bk-exp" style="flex:1">Crear copia</button>'
+    +'<button class="btn primario" id="bk-imp" style="flex:1;width:auto">Restaurar</button>'
+    +'</div>'
+    +'<div class="muted small" id="bk-msg" style="margin-top:6px"></div>'
+    +'</div>');
+  var ta=card.querySelector('#bk-txt');
+  var msg=card.querySelector('#bk-msg');
+  card.querySelector('#bk-exp').addEventListener('click', function(){
+    ta.value=JSON.stringify(pedidos);
+    ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length);
+    var copiado=false;
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(ta.value).then(function(){ msg.textContent='Copia creada y copiada al portapapeles ('+pedidos.length+' pedidos).'; });
+      copiado=true;
+    }
+    if(!copiado){
+      try{ document.execCommand('copy'); }catch(e){}
+      msg.textContent='Copia creada ('+pedidos.length+' pedidos). Mantén presionado el texto para copiarlo.';
+    }
+  });
+  card.querySelector('#bk-imp').addEventListener('click', function(){
+    try{
+      var d=JSON.parse(ta.value);
+      if(!Array.isArray(d)) throw new Error('formato');
+      pedidos=d;
+      guardarPedidos(pedidos);
+      msg.textContent='Restaurado: '+d.length+' pedidos.';
+      render('hoy');
+    }catch(e){
+      msg.textContent='Ese texto no es una copia válida. Pega exactamente lo que generó “Crear copia”.';
+    }
+  });
+  return card;
+}
+
+/* ================= CLIENTES ================= */
+function renderClientes(){
+  var mapa={};
+  pedidos.filter(function(p){return p.estado!=='Cancelado';}).forEach(function(p){
+    var k=(p.telefono||p.cliente||'').trim(); if(!k) return;
+    if(!mapa[k]) mapa[k]={nombre:p.cliente||k, telefono:p.telefono, pedidos:0, total:0, ultima:p.fecha};
+    var m=mapa[k];
+    m.pedidos++; m.total+=calc(p.items).venta+(p.domicilio||0);
+    if(p.fecha>m.ultima) m.ultima=p.fecha;
+    if(p.cliente) m.nombre=p.cliente;
+  });
+  var lista=Object.keys(mapa).map(function(k){return mapa[k];}).sort(function(a,b){return b.total-a.total;});
+
+  var card=el('<div class="card"><h2>Clientes ('+lista.length+')</h2>'
+    +'<div class="muted small" style="margin-bottom:8px">Retención por WhatsApp es la prioridad #2: las clientas marcadas “reactivar” llevan más de 30 días sin pedir.</div></div>');
+
+  if(lista.length===0){
+    card.appendChild(el('<div class="muted">Los clientes aparecen aquí automáticamente al registrar pedidos.</div>'));
+  } else {
+    lista.forEach(function(c){
+      var d=Math.floor((new Date(hoyISO())-new Date(c.ultima))/86400000);
+      var nombrePila=(c.nombre||'').split(' ')[0];
+      var wa=waLink(c.telefono, '¡Hola '+nombrePila+'! 💙 Esta semana en El Griego tenemos los platos que te encantan. ¿Te dejamos tu pedido listo?');
+      card.appendChild(el('<div class="item-row"><div>'
+        +'<div style="font-weight:800">'+esc(c.nombre)+'</div>'
+        +'<div class="muted small">'+c.pedidos+' pedido'+(c.pedidos>1?'s':'')+' · '+fmt(c.total)+' · último hace '+d+' día'+(d!==1?'s':'')+'</div>'
+        +'<div style="margin-top:3px">'
+        +(c.pedidos>=3?'<span class="chip estrella">frecuente</span> ':'')
+        +(d>30?'<span class="chip alerta">reactivar</span>':'')
+        +'</div></div>'
+        +(wa?'<a class="btn wa" href="'+wa+'" target="_blank" rel="noreferrer">Escribir</a>':'')
+        +'</div>'));
+    });
+  }
+  main.appendChild(card);
+}
+
+/* ================= INICIO ================= */
+cargarPedidos(function(d){
+  pedidos=d;
+  render('hoy');
+});
+</script>
+</body>
+</html>
