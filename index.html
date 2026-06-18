@@ -198,6 +198,7 @@ var tabs=document.getElementById('tabbar').querySelectorAll('button');
 var tabActual='hoy';
 var filtroPedidos='Activos';
 var abiertos={};
+var abiertosClientes={};
 
 function render(tab){
   tabActual=tab;
@@ -587,10 +588,15 @@ function renderClientes(){
     card.appendChild(el('<div class="muted">Los clientes aparecen aquí automáticamente al registrar pedidos.</div>'));
   } else {
     lista.forEach(function(c){
+      var clave=(c.telefono||c.nombre||'').trim();
       var d=Math.floor((new Date(hoyISO())-new Date(c.ultima))/86400000);
       var nombrePila=(c.nombre||'').split(' ')[0];
       var wa=waLink(c.telefono, '¡Hola '+nombrePila+'! 💙 Esta semana en El Griego tenemos los platos que te encantan. ¿Te dejamos tu pedido listo?');
-      var fila=el('<div class="item-row"><div style="flex:1;min-width:0">'
+
+      var wrap=el('<div style="border-bottom:1px dashed var(--linea);padding:8px 0"></div>');
+
+      var top=el('<div style="cursor:pointer;display:flex;align-items:flex-start;justify-content:space-between;gap:8px">'
+        +'<div style="flex:1;min-width:0">'
         +'<div style="font-weight:800">'+esc(c.nombre)+'</div>'
         +'<div class="muted small">'+c.pedidos+' pedido'+(c.pedidos>1?'s':'')+' · '+fmt(c.total)+' · último hace '+d+' día'+(d!==1?'s':'')+'</div>'
         +'<div style="margin-top:3px">'
@@ -601,16 +607,51 @@ function renderClientes(){
         +(wa?'<a class="btn wa" href="'+wa+'" target="_blank" rel="noreferrer">Escribir</a>':'')
         +'<button class="btn fant" data-eliminar="1">Eliminar</button>'
         +'</div></div>');
-      fila.querySelector('[data-eliminar]').addEventListener('click', function(){
+
+      /* order history panel */
+      var pedidosCliente=pedidos.filter(function(p){
+        return ((p.telefono||p.cliente||'').trim())===clave && p.estado!=='Cancelado';
+      }).slice().sort(function(a,b){ return a.fecha<b.fecha?-1:a.fecha>b.fecha?1:0; });
+
+      var histHtml='<div style="margin-top:10px;padding-top:8px;border-top:1px dashed var(--linea)">';
+      pedidosCliente.forEach(function(p){
+        var t=calc(p.items);
+        histHtml+='<div style="margin-bottom:10px">'
+          +'<div class="row small"><span style="font-weight:700">'+esc(p.fecha)+'</span>'
+          +'<span class="money">'+fmt(t.venta+(p.domicilio||0))+'</span></div>'
+          +'<div class="muted small" style="margin-bottom:3px">'+esc(p.tipo)+' · '+esc(p.canal)+'</div>';
+        p.items.forEach(function(it){
+          var pr=prod(it.key);
+          if(pr) histHtml+='<div class="muted small">'+it.qty+' × '+esc(pr.nombre)+'</div>';
+        });
+        histHtml+='<div style="margin-top:3px">'
+          +'<span class="chip '+(p.estado==='Entregado'?'ok':'neutro')+'">'+esc(p.estado)+'</span> '
+          +'<span class="chip '+(p.pago==='Pagado'?'ok':'warn')+'">'+esc(p.pago||'Pendiente')+'</span>'
+          +'</div></div>';
+      });
+      histHtml+='</div>';
+
+      var det=el(histHtml);
+      det.style.display=abiertosClientes[clave]?'block':'none';
+
+      top.addEventListener('click', function(e){
+        if(e.target.closest('[data-eliminar]') || e.target.closest('a')) return;
+        abiertosClientes[clave]=!abiertosClientes[clave];
+        det.style.display=abiertosClientes[clave]?'block':'none';
+      });
+
+      top.querySelector('[data-eliminar]').addEventListener('click', function(){
         if(!confirm('¿Eliminar a '+c.nombre+' y todos sus pedidos?')) return;
-        var clave=(c.telefono||c.nombre||'').trim();
         pedidos=pedidos.filter(function(p){
           return ((p.telefono||p.cliente||'').trim())!==clave;
         });
         guardarPedidos(pedidos);
         render('clientes');
       });
-      card.appendChild(fila);
+
+      wrap.appendChild(top);
+      wrap.appendChild(det);
+      card.appendChild(wrap);
     });
   }
   main.appendChild(card);
