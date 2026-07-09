@@ -100,11 +100,12 @@ hr.s{border:none;border-top:1px dashed var(--linea);margin:8px 0}
 var PRODUCTOS = [
  {key:'gyros_cerdo',  nombre:'Gyros de Cerdo',        precio:24000, unidad:'por gyro',      fc:15.2, clase:'Estrella'},
  {key:'gyros_pollo',  nombre:'Gyros de Pollo',        precio:24000, unidad:'por gyro',      fc:18.0, clase:'Estrella'},
+ {key:'gyros_bondiola',nombre:'Gyros de Bondiola',    precio:24000, unidad:'por gyro',      fc:19.3, clase:'Caballo de batalla'},
  {key:'kebab',        nombre:'Kebab Estilo Thanasis', precio:24000, unidad:'por porción',   fc:19.1, clase:'Rompecabezas', destacar:true},
  {key:'mousaka',      nombre:'Mousaka',               precio:30000, unidad:'280 g',         fc:null},
  {key:'pastitsio',    nombre:'Pastitsio',             precio:30000, unidad:'380 g',         fc:null},
  {key:'spanako',      nombre:'Spanakopitakia',        precio:22000, unidad:'6 empanadas',   fc:null},
- {key:'tiro',         nombre:'Tiropitakia',           precio:22000, unidad:'6 empanadas',   fc:null},
+ {key:'tiro',         nombre:'Tiropitakia',           precio:22000, unidad:'6 empanadas',   fc:62.2},
  {key:'praso',        nombre:'Prasopitakia',          precio:24000, unidad:'6 pastelitos',  fc:null},
  {key:'ens_griega',   nombre:'Ensalada Griega',       precio:20000, unidad:'250 g',         fc:null},
  {key:'dakos',        nombre:'Ensalada Dakos',        precio:20000, unidad:'250 g',         fc:null},
@@ -113,6 +114,11 @@ var PRODUCTOS = [
  {key:'tzatziki',     nombre:'Tzatziki',              precio:18000, unidad:'200 g',         fc:22.4, clase:'Caballo de batalla', nota:'Candidato a 20.000'}
 ];
 var FC_ESTIMADO = 28;
+/* Ventas reales ene–jun 2026 (unidades) — fuente para la matriz de ingeniería de menú. */
+var VENTAS_2026 = {
+  gyros_cerdo:61, gyros_pollo:49, gyros_bondiola:46, kebab:64, mousaka:78, pastitsio:9,
+  spanako:32, tiro:27, praso:4, ens_griega:48, dakos:0, gambas:6, pita:47, tzatziki:27
+};
 var UMBRAL = 150000;
 /* Menús para compartir: presets de cantidades a precio pleno (sin descuento). */
 var BUNDLES = [
@@ -625,6 +631,53 @@ function renderMenu(){
 
     return wrap;
   }
+
+  /* ---- Matriz de ingeniería de menú (margen app × popularidad real 2026) ---- */
+  var datos=PRODUCTOS.map(function(p){
+    return { p:p, key:p.key, margen:p.precio*(1-fcDe(p)/100), units:VENTAS_2026[p.key]||0, estimado:(p.fc==null) };
+  });
+  var totalUnits=datos.reduce(function(s,d){return s+d.units;},0);
+  var avgMargen=datos.reduce(function(s,d){return s+d.margen;},0)/datos.length;
+  var avgUnits=totalUnits/datos.length;
+
+  function quad(d){
+    var altoM=d.margen>=avgMargen, altaP=d.units>=avgUnits;
+    if(altoM&&altaP) return 'estrella';
+    if(!altoM&&altaP) return 'caballo';
+    if(altoM&&!altaP) return 'rompe';
+    return 'perro';
+  }
+  var grupos={estrella:[],caballo:[],rompe:[],perro:[]};
+  datos.forEach(function(d){ grupos[quad(d)].push(d); });
+
+  function celda(titulo, sub, key, chipCls){
+    var items=grupos[key].sort(function(a,b){return b.units-a.units;});
+    var lista=items.length
+      ? items.map(function(d){
+          return '<div class="row small" style="padding:2px 0"><span>'+esc(d.p.nombre)
+            +(d.estimado?' <span class="muted" style="font-size:10px">~est</span>':'')
+            +'</span><span class="muted">'+d.units+'</span></div>';
+        }).join('')
+      : '<div class="muted small" style="padding:2px 0">—</div>';
+    return '<div style="border:1px solid var(--linea);border-radius:9px;padding:8px;background:var(--carta)">'
+      +'<div style="display:flex;align-items:center;gap:5px;margin-bottom:4px">'
+      +'<span class="chip '+chipCls+'">'+esc(titulo)+'</span></div>'
+      +'<div class="muted" style="font-size:10px;margin-bottom:4px">'+esc(sub)+'</div>'
+      +lista+'</div>';
+  }
+
+  var matriz=el('<div class="card"><h2>Ingeniería de menú</h2>'
+    +'<div class="muted small" style="margin-bottom:8px">Margen por unidad × popularidad real (ventas ene–jun 2026, '+totalUnits+' und). Umbrales: margen medio '+fmt(avgMargen)+' · '+avgUnits.toFixed(1)+' und promedio. Los items sin costear (~est) usan '+FC_ESTIMADO+'% estimado.</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+    +celda('Rompecabezas','Buen margen · baja venta','rompe','rompe')
+    +celda('Estrella','Buen margen · alta venta','estrella','estrella')
+    +celda('Perro','Bajo margen · baja venta','perro','neutro')
+    +celda('Caballo','Bajo margen · alta venta','caballo','caballo')
+    +'</div>'
+    +'<div class="muted small" style="margin-top:8px">↑ margen · → popularidad. Impulsa Rompecabezas, protege Estrellas, revisa precio/costo en Caballos, replantea Perros.</div>'
+    +(totalUnits<10?'<div class="aviso" style="margin-top:8px">Aún hay pocos pedidos ('+totalUnits+' und). La popularidad es poco confiable hasta acumular más historial.</div>':'')
+    +'</div>');
+  main.appendChild(matriz);
 
   var costeados=PRODUCTOS.filter(function(p){return p.fc!=null;});
   var pendientes=PRODUCTOS.filter(function(p){return p.fc==null;});
