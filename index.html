@@ -144,6 +144,7 @@ function waLink(tel, texto){
    2) localStorage    -> archivo abierto en un navegador / URL propia
    3) memoria         -> último recurso (solo la sesión actual)  */
 var memoria = null;
+var memoriaCosteos = {};
 var modoGuardado = 'sesion'; // 'claude' | 'dispositivo' | 'sesion'
 
 function localStorageDisponible(){
@@ -189,6 +190,34 @@ function guardarPedidos(d){
   if (modoGuardado==='dispositivo'){
     try{ localStorage.setItem('elgriego_pedidos', s); }catch(e){}
   }
+}
+function cargarCosteos(cb){
+  if (window.storage && typeof window.storage.get==='function'){
+    window.storage.get('elgriego_costeos').then(function(r){
+      var d={}; try{ if(r && r.value) d=JSON.parse(r.value); }catch(e){}
+      cb(d);
+    }).catch(function(){ cb({}); });
+    return;
+  }
+  if (localStorageDisponible()){
+    try{ var v=localStorage.getItem('elgriego_costeos'); cb(v?JSON.parse(v):{}); return; }catch(e){ cb({}); return; }
+  }
+  cb(memoriaCosteos);
+}
+function guardarCosteos(d){
+  memoriaCosteos=d;
+  if (modoGuardado==='claude' && window.storage && typeof window.storage.set==='function'){
+    window.storage.set('elgriego_costeos', JSON.stringify(d)).catch(function(){});
+    return;
+  }
+  if (modoGuardado==='dispositivo'){
+    try{ localStorage.setItem('elgriego_costeos', JSON.stringify(d)); }catch(e){}
+  }
+}
+function aplicarCosteos(costeos){
+  PRODUCTOS.forEach(function(p){
+    if(costeos[p.key]!=null) p.fc=costeos[p.key];
+  });
 }
 
 /* ================= APP ================= */
@@ -497,8 +526,11 @@ function renderMenu(){
     if(c==='Rompecabezas') return 'rompe';
     return 'neutro';
   }
-  function fila(p){
-    return '<div class="item-row"><div>'
+
+  function filaDOM(p, editable){
+    var wrap=el('<div class="item-row" style="flex-wrap:wrap;gap:6px"></div>');
+
+    var info=el('<div style="flex:1;min-width:0">'
       +'<div style="font-weight:700">'+esc(p.nombre)+(p.destacar?' <span class="chip rompe">dar énfasis</span>':'')+'</div>'
       +'<div class="muted small">'+fmt(p.precio)+' · '+esc(p.unidad)+(p.nota?' · '+esc(p.nota):'')+'</div>'
       +'<div style="margin-top:3px">'
@@ -506,17 +538,73 @@ function renderMenu(){
       +(p.fc!=null
         ? '<span class="chip '+(p.fc<=20?'ok':'warn')+'">FC '+p.fc+'%</span>'
         : '<span class="chip alerta">sin costear</span>')
-      +'</div></div>'
-      +'<div class="muted small" style="text-align:right;min-width:50px">'+(cnt[p.key]||0)+' und<br/>mes</div></div>';
+      +'</div></div>');
+    wrap.appendChild(info);
+
+    var right=el('<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">'
+      +'<div class="muted small" style="text-align:right">'+(cnt[p.key]||0)+' und<br/>mes</div>'
+      +'<button class="btn fant" style="padding:4px 8px;font-size:11px" data-costear="1">'
+      +(editable?'Editar FC':'Costear')+'</button></div>');
+    wrap.appendChild(right);
+
+    /* inline costeo form — hidden by default */
+    var form=el('<div style="display:none;width:100%;padding-top:6px;border-top:1px dashed var(--linea)">'
+      +'<label class="f">Food cost % real</label>'
+      +'<div style="display:flex;gap:8px;align-items:center">'
+      +'<input class="f" type="number" min="1" max="100" step="0.1" id="fc-input-'+p.key+'" placeholder="ej. 19.5" style="font-size:15px;max-width:120px">'
+      +'<button class="btn oliva" style="flex:1" data-guardar="1">Guardar</button>'
+      +'<button class="btn fant" data-cancelar="1">Cancelar</button>'
+      +'</div>'
+      +'<div class="muted small" id="fc-preview-'+p.key+'" style="margin-top:4px"></div>'
+      +'</div>');
+    wrap.appendChild(form);
+
+    var input=form.querySelector('input');
+    var preview=form.querySelector('#fc-preview-'+p.key);
+
+    if(p.fc!=null) input.value=p.fc;
+
+    input.addEventListener('input', function(){
+      var v=parseFloat(input.value);
+      if(!isNaN(v) && v>0){
+        var margen=p.precio*(1-v/100);
+        preview.textContent='Margen estimado: '+fmt(margen)+' COP · '+(v<=20?'✓ dentro de meta':'⚠ por encima del 20%');
+      } else { preview.textContent=''; }
+    });
+
+    right.querySelector('[data-costear]').addEventListener('click', function(){
+      form.style.display=form.style.display==='none'?'block':'none';
+      if(form.style.display==='block') input.focus();
+    });
+    form.querySelector('[data-cancelar]').addEventListener('click', function(){
+      form.style.display='none';
+    });
+    form.querySelector('[data-guardar]').addEventListener('click', function(){
+      var v=parseFloat(input.value);
+      if(isNaN(v)||v<=0||v>100){ alert('Ingresa un % válido entre 1 y 100.'); return; }
+      p.fc=Math.round(v*10)/10;
+      cargarCosteos(function(costeos){
+        costeos[p.key]=p.fc;
+        guardarCosteos(costeos);
+        render('menu');
+      });
+    });
+
+    return wrap;
   }
 
   var costeados=PRODUCTOS.filter(function(p){return p.fc!=null;});
   var pendientes=PRODUCTOS.filter(function(p){return p.fc==null;});
 
-  main.appendChild(el('<div class="card"><h2>Costeados · meta ≤20% food cost</h2>'+costeados.map(fila).join('')+'</div>'));
-  main.appendChild(el('<div class="card"><h2>Pendientes de costear ('+pendientes.length+')</h2>'
-    +'<div class="muted small" style="margin-bottom:6px">Empezar por Mousaka y Spanakopitakia. Mientras tanto se usa '+FC_ESTIMADO+'% estimado.</div>'
-    +pendientes.map(fila).join('')+'</div>'));
+  var cardC=el('<div class="card"><h2>Costeados · meta ≤20% food cost</h2></div>');
+  costeados.forEach(function(p){ cardC.appendChild(filaDOM(p, true)); });
+  main.appendChild(cardC);
+
+  var cardP=el('<div class="card"><h2>Pendientes de costear ('+pendientes.length+')</h2>'
+    +'<div class="muted small" style="margin-bottom:6px">Empezar por Mousaka y Spanakopitakia. Mientras tanto se usa '+FC_ESTIMADO+'% estimado.</div></div>');
+  pendientes.forEach(function(p){ cardP.appendChild(filaDOM(p, false)); });
+  main.appendChild(cardP);
+
   main.appendChild(el('<div class="card"><h2>Recordatorios de menú</h2>'
     +'<div class="small" style="display:grid;gap:6px">'
     +'<div>✦ Gambas Saganaki es <b>ancla de precio</b> — debe abrir su sección, no bajar el precio.</div>'
@@ -530,7 +618,7 @@ function renderMenu(){
 /* ============ COPIA DE SEGURIDAD ============ */
 function backupCard(){
   var card=el('<div class="card"><h2>Copia de seguridad</h2>'
-    +'<div class="muted small" style="margin-bottom:6px">“Crear copia” genera un texto con todos tus pedidos: cópialo y guárdalo donde quieras (Notas, WhatsApp contigo misma). Para pasar los datos a otro dispositivo o recuperarlos, pega ese texto aquí y toca “Restaurar”.</div>'
+    +'<div class="muted small" style="margin-bottom:6px">“Crear copia” genera un texto con tus pedidos <b>y tus costeos</b>: cópialo y guárdalo donde quieras (Notas, WhatsApp contigo misma). Para pasar los datos a otro dispositivo o recuperarlos, pega ese texto aquí y toca “Restaurar”.</div>'
     +'<textarea class="f" rows="3" id="bk-txt" placeholder="Aquí aparece tu copia / pega aquí para restaurar"></textarea>'
     +'<div style="display:flex;gap:8px;margin-top:8px">'
     +'<button class="btn oliva" id="bk-exp" style="flex:1">Crear copia</button>'
@@ -541,25 +629,46 @@ function backupCard(){
   var ta=card.querySelector('#bk-txt');
   var msg=card.querySelector('#bk-msg');
   card.querySelector('#bk-exp').addEventListener('click', function(){
-    ta.value=JSON.stringify(pedidos);
-    ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length);
-    var copiado=false;
-    if(navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(ta.value).then(function(){ msg.textContent='Copia creada y copiada al portapapeles ('+pedidos.length+' pedidos).'; });
-      copiado=true;
-    }
-    if(!copiado){
-      try{ document.execCommand('copy'); }catch(e){}
-      msg.textContent='Copia creada ('+pedidos.length+' pedidos). Mantén presionado el texto para copiarlo.';
-    }
+    cargarCosteos(function(costeos){
+      var sobre={ v:2, pedidos:pedidos, costeos:costeos };
+      ta.value=JSON.stringify(sobre);
+      ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length);
+      var nCost=Object.keys(costeos||{}).length;
+      var resumen=pedidos.length+' pedidos · '+nCost+' costeos';
+      var copiado=false;
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(ta.value).then(function(){ msg.textContent='Copia creada y copiada al portapapeles ('+resumen+').'; });
+        copiado=true;
+      }
+      if(!copiado){
+        try{ document.execCommand('copy'); }catch(e){}
+        msg.textContent='Copia creada ('+resumen+'). Mantén presionado el texto para copiarlo.';
+      }
+    });
   });
   card.querySelector('#bk-imp').addEventListener('click', function(){
     try{
       var d=JSON.parse(ta.value);
-      if(!Array.isArray(d)) throw new Error('formato');
-      pedidos=d;
+      var nuevosPedidos, nuevosCosteos=null;
+      if(Array.isArray(d)){
+        /* copia antigua: solo pedidos */
+        nuevosPedidos=d;
+      } else if(d && Array.isArray(d.pedidos)){
+        /* copia nueva: pedidos + costeos */
+        nuevosPedidos=d.pedidos;
+        nuevosCosteos=(d.costeos && typeof d.costeos==='object') ? d.costeos : {};
+      } else {
+        throw new Error('formato');
+      }
+      pedidos=nuevosPedidos;
       guardarPedidos(pedidos);
-      msg.textContent='Restaurado: '+d.length+' pedidos.';
+      var resumen=pedidos.length+' pedidos';
+      if(nuevosCosteos){
+        guardarCosteos(nuevosCosteos);
+        aplicarCosteos(nuevosCosteos);
+        resumen+=' · '+Object.keys(nuevosCosteos).length+' costeos';
+      }
+      msg.textContent='Restaurado: '+resumen+'.';
       render('hoy');
     }catch(e){
       msg.textContent='Ese texto no es una copia válida. Pega exactamente lo que generó “Crear copia”.';
@@ -660,7 +769,10 @@ function renderClientes(){
 /* ================= INICIO ================= */
 cargarPedidos(function(d){
   pedidos=d;
-  render('hoy');
+  cargarCosteos(function(costeos){
+    aplicarCosteos(costeos);
+    render('hoy');
+  });
 });
 </script>
 </body>
