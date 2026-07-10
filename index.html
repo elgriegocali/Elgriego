@@ -114,10 +114,15 @@ var PRODUCTOS = [
  {key:'tzatziki',     nombre:'Tzatziki',              precio:18000, unidad:'200 g',         fc:22.4, clase:'Caballo de batalla', nota:'Candidato a 20.000'}
 ];
 var FC_ESTIMADO = 28;
-/* Ventas reales ene–jun 2026 (unidades) — fuente para la matriz de ingeniería de menú. */
-var VENTAS_2026 = {
-  gyros_cerdo:61, gyros_pollo:49, gyros_bondiola:46, kebab:64, mousaka:78, pastitsio:9,
-  spanako:32, tiro:27, praso:4, ens_griega:48, dakos:0, gambas:6, pita:47, tzatziki:27
+/* Ventas reales 2026 por mes (unidades) — base histórica de la matriz de ingeniería de menú.
+   Los pedidos completados en la app se suman encima, por mes de entrega. */
+var VENTAS_MES = {
+  '2026-01': {ens_griega:24, gyros_bondiola:8, gyros_cerdo:46, gyros_pollo:22, kebab:26, mousaka:10, pastitsio:2, pita:10, spanako:12, tiro:14, tzatziki:3},
+  '2026-02': {ens_griega:6, gambas:1, gyros_bondiola:14, gyros_pollo:13, kebab:13, mousaka:2, pastitsio:2, pita:5, praso:1, spanako:2, tiro:3, tzatziki:2},
+  '2026-03': {ens_griega:3, gambas:1, gyros_bondiola:5, gyros_cerdo:13, kebab:15, mousaka:12, pastitsio:3, pita:9, praso:1, spanako:4, tiro:3, tzatziki:2},
+  '2026-04': {ens_griega:1, gambas:1, gyros_cerdo:1, gyros_pollo:1, kebab:1, mousaka:12, spanako:3, tiro:2, tzatziki:1},
+  '2026-05': {ens_griega:13, gambas:1, gyros_bondiola:5, gyros_cerdo:1, gyros_pollo:9, kebab:5, mousaka:28, pastitsio:1, pita:11, praso:1, spanako:9, tiro:5, tzatziki:12},
+  '2026-06': {ens_griega:1, gambas:2, gyros_bondiola:14, gyros_pollo:4, kebab:4, mousaka:14, pastitsio:1, pita:12, praso:1, spanako:2, tzatziki:7}
 };
 var UMBRAL = 150000;
 /* Menús para compartir: presets de cantidades a precio pleno (sin descuento). */
@@ -243,6 +248,8 @@ var tabActual='hoy';
 var filtroPedidos='Activos';
 var abiertos={};
 var abiertosClientes={};
+var matrizModo='anio';   // 'anio' | 'mes'
+var matrizValor=null;    // '2026' o '2026-07'; se fija por defecto al renderizar
 
 function render(tab){
   tabActual=tab;
@@ -632,11 +639,53 @@ function renderMenu(){
     return wrap;
   }
 
-  /* ---- Matriz de ingeniería de menú (margen app × popularidad real 2026) ---- */
+  /* ---- Matriz de ingeniería de menú ----
+     Popularidad por periodo. Base = ventas 2026 por mes; encima se suman
+     los pedidos completados (Entregado) por su mes de entrega. */
+  var MNOM=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+  function mesLabel(m){ var a=m.split('-'); return MNOM[parseInt(a[1],10)-1]+' '+a[0]; }
+
+  var appPorMes={};
+  pedidos.filter(function(p){return p.estado==='Entregado' && p.fecha;}).forEach(function(p){
+    var m=mesDe(p.fecha); if(!appPorMes[m]) appPorMes[m]={};
+    p.items.forEach(function(it){ appPorMes[m][it.key]=(appPorMes[m][it.key]||0)+it.qty; });
+  });
+
+  /* fijar selección por defecto / validar la actual */
+  var mesHoy=mesDe(hoyISO()), anioHoy=mesHoy.slice(0,4);
+
+  var mesesSet={};
+  Object.keys(VENTAS_MES).forEach(function(m){ mesesSet[m]=1; });
+  Object.keys(appPorMes).forEach(function(m){ mesesSet[m]=1; });
+  mesesSet[mesHoy]=1;                                            // el mes actual siempre disponible
+  var allMeses=Object.keys(mesesSet).sort().reverse();          // más reciente primero
+  var years={}; allMeses.forEach(function(m){ years[m.slice(0,4)]=1; });
+  years[anioHoy]=1;                                             // el año actual siempre disponible
+  var allYears=Object.keys(years).sort().reverse();
+  if(matrizModo==='mes'){
+    if(allMeses.indexOf(matrizValor)===-1) matrizValor=(allMeses.indexOf(mesHoy)!==-1?mesHoy:allMeses[0]);
+  } else {
+    if(allYears.indexOf(matrizValor)===-1) matrizValor=(allYears.indexOf(anioHoy)!==-1?anioHoy:allYears[0]);
+  }
+
+  var mesesPeriodo = matrizModo==='mes' ? [matrizValor]
+                    : allMeses.filter(function(m){return m.slice(0,4)===matrizValor;});
+  function acumular(fuente){
+    var out={};
+    mesesPeriodo.forEach(function(m){
+      var src=fuente[m]||{};
+      for(var k in src) out[k]=(out[k]||0)+src[k];
+    });
+    return out;
+  }
+  var baseMap=acumular(VENTAS_MES), appMap=acumular(appPorMes);
+
   var datos=PRODUCTOS.map(function(p){
-    return { p:p, key:p.key, margen:p.precio*(1-fcDe(p)/100), units:VENTAS_2026[p.key]||0, estimado:(p.fc==null) };
+    var base=baseMap[p.key]||0, nuevos=appMap[p.key]||0;
+    return { p:p, key:p.key, margen:p.precio*(1-fcDe(p)/100), base:base, nuevos:nuevos, units:base+nuevos, estimado:(p.fc==null) };
   });
   var totalUnits=datos.reduce(function(s,d){return s+d.units;},0);
+  var totalNuevos=datos.reduce(function(s,d){return s+d.nuevos;},0);
   var avgMargen=datos.reduce(function(s,d){return s+d.margen;},0)/datos.length;
   var avgUnits=totalUnits/datos.length;
 
@@ -656,7 +705,9 @@ function renderMenu(){
       ? items.map(function(d){
           return '<div class="row small" style="padding:2px 0"><span>'+esc(d.p.nombre)
             +(d.estimado?' <span class="muted" style="font-size:10px">~est</span>':'')
-            +'</span><span class="muted">'+d.units+'</span></div>';
+            +'</span><span class="muted">'+d.units
+            +(d.nuevos>0?' <span style="color:var(--oliva-osc);font-weight:700">+'+d.nuevos+'</span>':'')
+            +'</span></div>';
         }).join('')
       : '<div class="muted small" style="padding:2px 0">—</div>';
     return '<div style="border:1px solid var(--linea);border-radius:9px;padding:8px;background:var(--carta)">'
@@ -666,8 +717,20 @@ function renderMenu(){
       +lista+'</div>';
   }
 
+  var opciones = (matrizModo==='mes'
+      ? allMeses.map(function(m){return '<option value="'+m+'"'+(m===matrizValor?' selected':'')+'>'+mesLabel(m)+'</option>';})
+      : allYears.map(function(y){return '<option value="'+y+'"'+(y===matrizValor?' selected':'')+'>'+y+'</option>';})
+    ).join('');
+
   var matriz=el('<div class="card"><h2>Ingeniería de menú</h2>'
-    +'<div class="muted small" style="margin-bottom:8px">Margen por unidad × popularidad real (ventas ene–jun 2026, '+totalUnits+' und). Umbrales: margen medio '+fmt(avgMargen)+' · '+avgUnits.toFixed(1)+' und promedio. Los items sin costear (~est) usan '+FC_ESTIMADO+'% estimado.</div>'
+    +'<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">'
+    +'<div class="pills" style="margin:0">'
+    +'<button class="pill'+(matrizModo==='anio'?' on':'')+'" data-modo="anio">Por año</button>'
+    +'<button class="pill'+(matrizModo==='mes'?' on':'')+'" data-modo="mes">Por mes</button>'
+    +'</div>'
+    +'<select class="f" id="mtz-periodo" style="width:auto;flex:1;min-width:120px">'+opciones+'</select>'
+    +'</div>'
+    +'<div class="muted small" style="margin-bottom:8px">Popularidad del periodo: '+totalUnits+' und (base histórica '+(totalUnits-totalNuevos)+' + '+totalNuevos+' de pedidos completados). El <span style="color:var(--oliva-osc);font-weight:700">+N</span> son unidades entregadas desde la app. Umbrales: margen medio '+fmt(avgMargen)+' · '+avgUnits.toFixed(1)+' und promedio. Sin costear (~est) usa '+FC_ESTIMADO+'%.</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
     +celda('Rompecabezas','Buen margen · baja venta','rompe','rompe')
     +celda('Estrella','Buen margen · alta venta','estrella','estrella')
@@ -675,8 +738,23 @@ function renderMenu(){
     +celda('Caballo','Bajo margen · alta venta','caballo','caballo')
     +'</div>'
     +'<div class="muted small" style="margin-top:8px">↑ margen · → popularidad. Impulsa Rompecabezas, protege Estrellas, revisa precio/costo en Caballos, replantea Perros.</div>'
-    +(totalUnits<10?'<div class="aviso" style="margin-top:8px">Aún hay pocos pedidos ('+totalUnits+' und). La popularidad es poco confiable hasta acumular más historial.</div>':'')
+    +(totalUnits<10?'<div class="aviso" style="margin-top:8px">Pocos datos en este periodo ('+totalUnits+' und). La popularidad es poco confiable hasta acumular más.</div>':'')
     +'</div>');
+
+  var modoBtns=matriz.querySelectorAll('[data-modo]');
+  for(var mi=0;mi<modoBtns.length;mi++){
+    (function(b){
+      b.addEventListener('click', function(){
+        matrizModo=b.getAttribute('data-modo');
+        matrizValor=null;   // se recalcula el valor por defecto del nuevo modo
+        render('menu');
+      });
+    })(modoBtns[mi]);
+  }
+  matriz.querySelector('#mtz-periodo').addEventListener('change', function(e){
+    matrizValor=e.target.value;
+    render('menu');
+  });
   main.appendChild(matriz);
 
   var costeados=PRODUCTOS.filter(function(p){return p.fc!=null;});
