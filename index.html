@@ -284,21 +284,72 @@ function renderHoy(){
   var pendCobro=validos.filter(function(p){return p.pago!=='Pagado';});
   var enProceso=validos.filter(function(p){return p.estado!=='Entregado';});
 
-  main.appendChild(el('<div class="kpis">'
-    +'<div class="kpi"><div class="lbl">Ventas hoy</div><div class="val">'+fmt(tHoy)+'</div></div>'
+  var totalPend=0; pendCobro.forEach(function(p){ totalPend+=calc(p.items).venta+(p.domicilio||0); });
+  var pctFC = tMes>0 ? cMes/tMes*100 : 0;
+
+  /* salud de clientes */
+  var mapaC={};
+  validos.forEach(function(p){
+    var k=(p.telefono||p.cliente||'').trim(); if(!k) return;
+    if(!mapaC[k]) mapaC[k]={pedidos:0, ultima:p.fecha};
+    mapaC[k].pedidos++; if(p.fecha>mapaC[k].ultima) mapaC[k].ultima=p.fecha;
+  });
+  var frecuentes=0, reactivar=0;
+  Object.keys(mapaC).forEach(function(k){
+    var c=mapaC[k];
+    if(c.pedidos>=3) frecuentes++;
+    if(Math.floor((new Date(hoyISO())-new Date(c.ultima))/86400000)>30) reactivar++;
+  });
+
+  /* promedio mensual 2026 (unidades históricas × precios actuales) */
+  var uBase={};
+  Object.keys(VENTAS_MES).forEach(function(m){ var s=VENTAS_MES[m]; for(var k in s) uBase[k]=(uBase[k]||0)+s[k]; });
+  var ingresoAnual=0; for(var kb in uBase){ var pb=prod(kb); if(pb) ingresoAnual+=uBase[kb]*pb.precio; }
+  var nMeses=Object.keys(VENTAS_MES).length;
+  var promMes = nMeses ? ingresoAnual/nMeses : 0;
+
+  /* línea de atención — lo más importante ahora */
+  var att, attCls='banner', attTab=null;
+  if(pendCobro.length>0){
+    att='💰 '+pendCobro.length+' pedido'+(pendCobro.length>1?'s':'')+' por cobrar — '+fmt(totalPend);
+    attCls='aviso'; attTab='pedidos';
+  } else if(tMes>0 && pctFC>24){
+    att='⚠ Food cost del mes en '+pctFC.toFixed(1)+'% — sobre la meta de 20%';
+    attCls='aviso'; attTab='menu';
+  } else if(enProceso.length>0){
+    att=enProceso.length+' pedido'+(enProceso.length>1?'s':'')+' en proceso · toca para ver';
+    attCls='banner'; attTab='pedidos';
+  } else {
+    att='✓ Todo en orden — sin pendientes por cobrar';
+  }
+  var attEl=el('<div class="'+attCls+'"'+(attTab?' style="cursor:pointer"':'')+'>'+att+'</div>');
+  if(attTab) attEl.addEventListener('click', function(){ render(attTab); });
+  main.appendChild(attEl);
+
+  var fcChip = pctFC<=20?'ok':(pctFC<=24?'warn':'alerta');
+  var salud=el('<div class="card"><h2>Resumen del negocio</h2>'
+    +'<div class="kpis" style="margin-bottom:10px">'
     +'<div class="kpi"><div class="lbl">Ventas mes</div><div class="val">'+fmt(tMes)+'</div></div>'
     +'<div class="kpi oliva"><div class="lbl">Margen mes</div><div class="val">'+fmt(tMes-cMes)+'</div></div>'
-    +'</div>'));
-
-  if(enProceso.length>0){
-    var b=el('<div class="banner" style="cursor:pointer">'+enProceso.length+' pedido'+(enProceso.length>1?'s':'')+' en proceso · toca para ver</div>');
-    b.addEventListener('click', function(){ render('pedidos'); });
-    main.appendChild(b);
-  }
-  if(pendCobro.length>0){
-    var tot=0; pendCobro.forEach(function(p){ tot+=calc(p.items).venta; });
-    main.appendChild(el('<div class="aviso">'+pendCobro.length+' con pago pendiente — total '+fmt(tot)+'</div>'));
-  }
+    +'<div class="kpi"><div class="lbl">Por cobrar</div><div class="val">'+fmt(totalPend)+'</div></div>'
+    +'</div>'
+    +'<div class="row"><span class="muted">Ventas hoy</span><span class="money">'+fmt(tHoy)+'</span></div>'
+    +'<hr class="s">'
+    +'<div class="row"><span class="muted">Food cost del mes</span>'
+      +(tMes>0?'<span class="chip '+fcChip+'">'+pctFC.toFixed(1)+'% · meta ≤20%</span>':'<span class="muted small">sin ventas aún</span>')+'</div>'
+    +'<div class="row"><span class="muted">Prom. mensual 2026</span><span class="money">'+fmt(promMes)+'</span></div>'
+    +'<div class="row"><span class="muted">En proceso hoy</span><span class="money">'+enProceso.length+'</span></div>'
+    +'<hr class="s">'
+    +'<div class="row"><span class="muted">Clientes</span><span>'
+      +(frecuentes>0?'<span class="chip estrella">'+frecuentes+' frecuente'+(frecuentes>1?'s':'')+'</span> ':'')
+      +(reactivar>0?'<span class="chip alerta">'+reactivar+' por reactivar</span>':'')
+      +(frecuentes===0&&reactivar===0?'<span class="muted small">se construyen con los pedidos</span>':'')+'</span></div>'
+    +'<div class="muted small" style="margin-top:8px">Compara tus ventas del mes con el promedio 2026. A inicios de mes la cifra es parcial.</div>'
+    +'</div>');
+  var filaClientes=salud.querySelectorAll('.row');
+  filaClientes[filaClientes.length-1].style.cursor='pointer';
+  filaClientes[filaClientes.length-1].addEventListener('click', function(){ render('clientes'); });
+  main.appendChild(salud);
 
   var cnt={};
   delMes.forEach(function(p){ p.items.forEach(function(it){ cnt[it.key]=(cnt[it.key]||0)+it.qty; }); });
