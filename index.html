@@ -160,6 +160,32 @@ function waLink(tel, texto){
   return 'https://wa.me/'+t+(texto?('?text='+encodeURIComponent(texto)):'');
 }
 
+/* ---- Mensajes al cliente para un pedido ---- */
+function nombrePila(p){ return ((p.cliente||'').trim().split(' ')[0]) || ''; }
+function saludo(p){ var n=nombrePila(p); return '¡Hola'+(n?' '+n:'')+'! 💙'; }
+function totalPedido(p){ return calc(p.items).venta + (p.domicilio||0); }
+
+function msgConfirmar(p){
+  var t=calc(p.items);
+  var lineas=p.items.map(function(it){ var pr=prod(it.key); return pr? ('• '+it.qty+'× '+pr.nombre+' — '+fmt(pr.precio*it.qty)) : ''; }).filter(Boolean).join('\n');
+  var msg=saludo(p)+' Gracias por tu pedido en El Griego. Te lo confirmo:\n\n'+lineas+'\n';
+  if(p.tipo==='Domicilio'){
+    if(t.venta>=UMBRAL) msg+='\n🎉 ¡El domicilio va gratis!';
+    else if((p.domicilio||0)>0) msg+='\nDomicilio: '+fmt(p.domicilio);
+  }
+  msg+='\nTotal: '+fmt(totalPedido(p))+'\n\n';
+  msg+= p.pago==='Pagado'
+    ? 'Ya quedó pago, así que lo dejamos listo para ti. 🇬🇷'
+    : 'Puedes pagar al recibir o por transferencia, como te quede mejor. 🇬🇷';
+  return msg;
+}
+function msgPago(p){
+  return saludo(p)+' Confirmamos que recibimos tu pago de '+fmt(totalPedido(p))+'. ¡Mil gracias! Ya dejamos todo listo para tu pedido. 🇬🇷';
+}
+function msgEntrega(p){
+  return saludo(p)+' Esperamos que hayas disfrutado tu pedido de El Griego. Fue un gusto atenderte — cuando quieras repetir, aquí estamos. ¡Buen provecho! 🇬🇷';
+}
+
 /* ============ ALMACENAMIENTO HÍBRIDO ============
    1) window.storage  -> dentro de Claude (persiste en tu cuenta)
    2) localStorage    -> archivo abierto en un navegador / URL propia
@@ -449,10 +475,18 @@ function tarjetaPedido(p){
   ESTADOS.forEach(function(e){ s+='<button class="pill'+(p.estado===e?' on':'')+'" data-estado="'+e+'">'+e+'</button>'; });
   s+='</div><label class="f">Pago</label><div class="pills">';
   ['Pendiente','Pagado'].forEach(function(e){ s+='<button class="pill'+(p.pago===e?' on':'')+'" data-pago="'+e+'">'+e+'</button>'; });
-  s+='</div><div class="row" style="margin-top:10px">';
-  var wa=waLink(p.telefono,'');
-  s+= wa? '<a class="btn wa" href="'+wa+'" target="_blank" rel="noreferrer">WhatsApp</a>' : '<span></span>';
-  s+='<button class="btn fant" data-borrar="1">Eliminar</button></div>';
+  s+='</div>';
+  var waConf=waLink(p.telefono, msgConfirmar(p));
+  if(waConf){
+    s+='<label class="f">Mensajes al cliente</label><div style="display:flex;flex-wrap:wrap;gap:6px">'
+      +'<a class="btn wa" href="'+waConf+'" target="_blank" rel="noreferrer">Confirmar pedido</a>'
+      +'<a class="btn wa" href="'+waLink(p.telefono, msgPago(p))+'" target="_blank" rel="noreferrer">Pago recibido</a>'
+      +'<a class="btn wa" href="'+waLink(p.telefono, msgEntrega(p))+'" target="_blank" rel="noreferrer">Entregado</a>'
+      +'</div>';
+  } else {
+    s+='<div class="muted small" style="margin-top:10px">Agrega el WhatsApp del cliente para enviarle mensajes.</div>';
+  }
+  s+='<div class="row" style="margin-top:10px"><span></span><button class="btn fant" data-borrar="1">Eliminar</button></div>';
 
   var det=el('<div style="display:'+(abiertos[p.id]?'block':'none')+';margin-top:6px">'+s+'</div>');
 
