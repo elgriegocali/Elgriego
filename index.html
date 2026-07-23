@@ -930,6 +930,7 @@ function renderClientes(){
         +'</div></div>'
         +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">'
         +(wa?'<a class="btn wa" href="'+wa+'" target="_blank" rel="noreferrer">Escribir</a>':'')
+        +'<button class="btn fant" data-editar="1" style="color:var(--azul)">Editar</button>'
         +'<button class="btn fant" data-eliminar="1">Eliminar</button>'
         +'</div></div>');
 
@@ -960,9 +961,40 @@ function renderClientes(){
       det.style.display=abiertosClientes[clave]?'block':'none';
 
       top.addEventListener('click', function(e){
-        if(e.target.closest('[data-eliminar]') || e.target.closest('a')) return;
+        if(e.target.closest('[data-eliminar]') || e.target.closest('[data-editar]') || e.target.closest('a')) return;
         abiertosClientes[clave]=!abiertosClientes[clave];
         det.style.display=abiertosClientes[clave]?'block':'none';
+      });
+
+      /* formulario de edición — nombre y WhatsApp, se aplica a todos sus pedidos */
+      var edit=el('<div style="display:none;margin-top:8px;padding-top:8px;border-top:1px dashed var(--linea)">'
+        +'<label class="f">Nombre</label><input class="f" data-e-nombre>'
+        +'<label class="f">WhatsApp</label><input class="f" data-e-tel inputmode="tel">'
+        +'<div style="display:flex;gap:8px;margin-top:8px">'
+        +'<button class="btn oliva" data-e-guardar style="flex:1">Guardar</button>'
+        +'<button class="btn fant" data-e-cancelar>Cancelar</button>'
+        +'</div></div>');
+      edit.querySelector('[data-e-nombre]').value=c.nombre||'';
+      edit.querySelector('[data-e-tel]').value=c.telefono||'';
+
+      top.querySelector('[data-editar]').addEventListener('click', function(){
+        edit.style.display=edit.style.display==='none'?'block':'none';
+        if(edit.style.display==='block') edit.querySelector('[data-e-nombre]').focus();
+      });
+      edit.querySelector('[data-e-cancelar]').addEventListener('click', function(){
+        edit.style.display='none';
+      });
+      edit.querySelector('[data-e-guardar]').addEventListener('click', function(){
+        var nuevoNombre=edit.querySelector('[data-e-nombre]').value.trim();
+        var nuevoTel=edit.querySelector('[data-e-tel]').value.trim();
+        if(!nuevoNombre && !nuevoTel){ alert('Ingresa al menos un nombre o un WhatsApp.'); return; }
+        pedidos.forEach(function(p){
+          if(((p.telefono||p.cliente||'').trim())===clave){
+            p.cliente=nuevoNombre; p.telefono=nuevoTel;
+          }
+        });
+        guardarPedidos(pedidos);
+        render('clientes');
       });
 
       top.querySelector('[data-eliminar]').addEventListener('click', function(){
@@ -975,6 +1007,7 @@ function renderClientes(){
       });
 
       wrap.appendChild(top);
+      wrap.appendChild(edit);
       wrap.appendChild(det);
       card.appendChild(wrap);
     });
