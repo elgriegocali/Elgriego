@@ -486,9 +486,116 @@ function tarjetaPedido(p){
   } else {
     s+='<div class="muted small" style="margin-top:10px">Agrega el WhatsApp del cliente para enviarle mensajes.</div>';
   }
-  s+='<div class="row" style="margin-top:10px"><span></span><button class="btn fant" data-borrar="1">Eliminar</button></div>';
+  s+='<div class="row" style="margin-top:10px">'
+    +'<button class="btn fant" data-editar-pedido="1" style="color:var(--azul)">Editar pedido</button>'
+    +'<button class="btn fant" data-borrar="1">Eliminar</button></div>';
 
   var det=el('<div style="display:'+(abiertos[p.id]?'block':'none')+';margin-top:6px">'+s+'</div>');
+
+  /* ---- edición del pedido: productos, domicilio y notas ---- */
+  var editItems={};
+  p.items.forEach(function(it){ editItems[it.key]=it.qty; });
+  var editDom=p.domicilio||0;
+
+  var edit=el('<div style="display:none;margin-top:8px;padding-top:8px;border-top:1px dashed var(--linea)">'
+    +'<div class="f" style="margin:0 0 4px">Productos del pedido</div>'
+    +'<div data-lista></div>'
+    +'<label class="f">Agregar producto</label>'
+    +'<select class="f" data-e-add><option value="">Elige un producto…</option>'
+    + PRODUCTOS.map(function(pr){return '<option value="'+pr.key+'">'+esc(pr.nombre)+' · '+fmt(pr.precio)+'</option>';}).join('')
+    +'</select>'
+    +'<div data-dom>'
+      +'<div class="banner" data-dom-gratis style="display:none;margin-top:8px">Domicilio gratis — el pedido supera '+fmt(UMBRAL)+'</div>'
+      +'<div data-dom-cobro style="display:none">'
+        +'<label class="f">Valor domicilio</label>'
+        +'<input class="f" inputmode="numeric" data-e-dom placeholder="0">'
+      +'</div>'
+    +'</div>'
+    +'<label class="f">Notas</label><textarea class="f" rows="2" data-e-notas placeholder="Dirección, hora, instrucciones…"></textarea>'
+    +'<div class="row" style="margin-top:8px"><span class="muted">Nuevo total</span><span class="money" data-e-total>0</span></div>'
+    +'<div style="display:flex;gap:8px;margin-top:8px">'
+    +'<button class="btn oliva" data-e-guardar style="flex:1">Guardar cambios</button>'
+    +'<button class="btn fant" data-e-cancelar>Cancelar</button>'
+    +'</div></div>');
+
+  edit.querySelector('[data-e-notas]').value=p.notas||'';
+  edit.querySelector('[data-e-dom]').value=editDom||'';
+
+  function listaEdit(){
+    return Object.keys(editItems).filter(function(k){return editItems[k]>0;})
+      .map(function(k){ return {key:k, qty:editItems[k]}; });
+  }
+  function actualizarEdit(){
+    var t=calc(listaEdit());
+    var gratis=edit.querySelector('[data-dom-gratis]');
+    var cobro=edit.querySelector('[data-dom-cobro]');
+    if(p.tipo==='Domicilio'){
+      var esGratis=t.venta>=UMBRAL;
+      gratis.style.display=esGratis?'block':'none';
+      cobro.style.display=esGratis?'none':'block';
+      if(esGratis) editDom=0;
+    } else {
+      gratis.style.display='none'; cobro.style.display='none'; editDom=0;
+    }
+    edit.querySelector('[data-e-total]').textContent=fmt(t.venta+editDom);
+  }
+  function pintarLista(){
+    var cont=edit.querySelector('[data-lista]');
+    cont.innerHTML='';
+    var keys=Object.keys(editItems).filter(function(k){return editItems[k]>0;});
+    if(keys.length===0){
+      cont.appendChild(el('<div class="muted small">Sin productos — agrega al menos uno.</div>'));
+      return;
+    }
+    keys.forEach(function(k){
+      var pr=prod(k); if(!pr) return;
+      var fila=el('<div class="item-row">'
+        +'<div style="flex:1;min-width:0"><div style="font-weight:700">'+esc(pr.nombre)+'</div>'
+        +'<div class="muted small">'+fmt(pr.precio*editItems[k])+'</div></div>'
+        +'<div class="qty"><button type="button" data-d="-1">−</button><span>'+editItems[k]+'</span><button type="button" data-d="1">+</button></div>'
+        +'</div>');
+      var btns=fila.querySelectorAll('.qty button');
+      for(var i=0;i<btns.length;i++){
+        (function(b){
+          b.addEventListener('click', function(){
+            editItems[k]=Math.max(0,(editItems[k]||0)+parseInt(b.getAttribute('data-d'),10));
+            pintarLista(); actualizarEdit();
+          });
+        })(btns[i]);
+      }
+      cont.appendChild(fila);
+    });
+  }
+
+  edit.querySelector('[data-e-add]').addEventListener('change', function(e){
+    var k=e.target.value; if(!k) return;
+    editItems[k]=(editItems[k]||0)+1;
+    e.target.value='';
+    pintarLista(); actualizarEdit();
+  });
+  edit.querySelector('[data-e-dom]').addEventListener('input', function(e){
+    editDom=parseInt(e.target.value,10)||0;
+    actualizarEdit();
+  });
+  pintarLista(); actualizarEdit();
+
+  det.querySelector('[data-editar-pedido]').addEventListener('click', function(){
+    edit.style.display=edit.style.display==='none'?'block':'none';
+  });
+  edit.querySelector('[data-e-cancelar]').addEventListener('click', function(){
+    edit.style.display='none';
+  });
+  edit.querySelector('[data-e-guardar]').addEventListener('click', function(){
+    var li=listaEdit();
+    if(li.length===0){ alert('El pedido debe tener al menos un producto.'); return; }
+    var t=calc(li);
+    p.items=li;
+    p.domicilio=(p.tipo==='Domicilio' && t.venta<UMBRAL) ? editDom : 0;
+    p.notas=edit.querySelector('[data-e-notas]').value.trim();
+    guardarPedidos(pedidos);
+    render('pedidos');
+  });
+  det.appendChild(edit);
 
   top.addEventListener('click', function(){
     abiertos[p.id]=!abiertos[p.id];
