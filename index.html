@@ -26,7 +26,7 @@ html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;background:
 .greca{height:8px;background:repeating-linear-gradient(90deg,var(--azul) 0 4px,transparent 4px 8px),repeating-linear-gradient(0deg,var(--azul) 0 2px,transparent 2px 5px),var(--cielo);border-bottom:1px solid var(--linea)}
 .main{flex:1;padding:12px 12px 20px;display:flex;flex-direction:column;gap:12px}
 .tabbar{position:sticky;bottom:0;z-index:30;background:var(--carta);border-top:1px solid var(--linea);display:flex;box-shadow:0 -4px 16px rgba(20,33,61,.06);padding-bottom:env(safe-area-inset-bottom)}
-.tabbar button{flex:1;background:none;border:none;font-size:10px;font-weight:700;letter-spacing:.06em;color:var(--gris);padding:8px 2px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;text-transform:uppercase;font-family:inherit}
+.tabbar button{flex:1;background:none;border:none;font-size:9px;font-weight:700;letter-spacing:.06em;color:var(--gris);padding:8px 2px 10px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;text-transform:uppercase;font-family:inherit}
 .tabbar button .ic{font-size:16px;line-height:1}
 .tabbar button.on{color:var(--azul)}
 .tabbar button.on::after{content:"";width:14px;height:2px;border-radius:2px;background:var(--oliva)}
@@ -92,6 +92,7 @@ hr.s{border:none;border-top:1px dashed var(--linea);margin:8px 0}
     <button data-tab="pedidos"><span class="ic">▤</span>Pedidos</button>
     <button data-tab="nuevo"><span class="ic">＋</span>Nuevo</button>
     <button data-tab="menu"><span class="ic">✦</span>Menú</button>
+    <button data-tab="costeo"><span class="ic">◈</span>Costeo</button>
     <button data-tab="clientes"><span class="ic">♥</span>Clientes</button>
   </nav>
 </div>
@@ -286,6 +287,7 @@ function render(tab){
   else if(tab==='pedidos') renderPedidos();
   else if(tab==='nuevo') renderNuevo();
   else if(tab==='menu') renderMenu();
+  else if(tab==='costeo') renderCosteo();
   else if(tab==='clientes') renderClientes();
   window.scrollTo(0,0);
 }
@@ -776,6 +778,7 @@ function renderMenu(){
       +(p.clase?'<span class="chip '+chipClase(p.clase)+'">'+esc(p.clase)+'</span> ':'')
       +(p.fc!=null
         ? '<span class="chip '+(p.fc<=20?'ok':'warn')+'">FC '+p.fc+'%</span>'
+          +(p.fcSrc==='receta'?' <span class="chip neutro">por receta</span>':'')
         : '<span class="chip alerta">sin costear</span>')
       +'</div></div>');
     wrap.appendChild(info);
@@ -783,7 +786,7 @@ function renderMenu(){
     var right=el('<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">'
       +'<div class="muted small" style="text-align:right">'+(cnt[p.key]||0)+' und<br/>mes</div>'
       +'<button class="btn fant" style="padding:4px 8px;font-size:11px" data-costear="1">'
-      +(editable?'Editar FC':'Costear')+'</button></div>');
+      +(p.fcSrc==='receta'?'Ver receta':(editable?'Editar FC':'Costear'))+'</button></div>');
     wrap.appendChild(right);
 
     /* inline costeo form — hidden by default */
@@ -812,6 +815,9 @@ function renderMenu(){
     });
 
     right.querySelector('[data-costear]').addEventListener('click', function(){
+      if(p.fcSrc==='receta'){    /* lo calcula la receta — se edita en Costeo */
+        costeoVista='productos'; costeoAbierto['p'+p.key]=true; render('costeo'); return;
+      }
       form.style.display=form.style.display==='none'?'block':'none';
       if(form.style.display==='block') input.focus();
     });
@@ -958,7 +964,7 @@ function renderMenu(){
   main.appendChild(cardC);
 
   var cardP=el('<div class="card"><h2>Pendientes de costear ('+pendientes.length+')</h2>'
-    +'<div class="muted small" style="margin-bottom:6px">Empezar por Mousaka y Spanakopitakia. Mientras tanto se usa '+FC_ESTIMADO+'% estimado.</div></div>');
+    +'<div class="muted small" style="margin-bottom:6px">Falta el desglose de Spanakopitakia, Pastitsio, Prasopitakia, Dakos y Gambas. Mientras tanto se usa '+FC_ESTIMADO+'% estimado.</div></div>');
   pendientes.forEach(function(p){ cardP.appendChild(filaDOM(p, false)); });
   main.appendChild(cardP);
 
@@ -987,11 +993,11 @@ function backupCard(){
   var msg=card.querySelector('#bk-msg');
   card.querySelector('#bk-exp').addEventListener('click', function(){
     cargarCosteos(function(costeos){
-      var sobre={ v:2, pedidos:pedidos, costeos:costeos };
+      var sobre={ v:3, pedidos:pedidos, costeos:costeos, recetas:costeoModelo() };
       ta.value=JSON.stringify(sobre);
       ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length);
       var nCost=Object.keys(costeos||{}).length;
-      var resumen=pedidos.length+' pedidos · '+nCost+' costeos';
+      var resumen=pedidos.length+' pedidos · '+nCost+' costeos · costeo por recetas';
       var copiado=false;
       if(navigator.clipboard && navigator.clipboard.writeText){
         navigator.clipboard.writeText(ta.value).then(function(){ msg.textContent='Copia creada y copiada al portapapeles ('+resumen+').'; });
@@ -1025,6 +1031,12 @@ function backupCard(){
         aplicarCosteos(nuevosCosteos);
         resumen+=' · '+Object.keys(nuevosCosteos).length+' costeos';
       }
+      if(d && d.recetas){
+        costeoCargarModelo(d.recetas);
+        guardarRecetas();
+        resumen+=' · recetas';
+      }
+      aplicarCosteoRecetas();
       msg.textContent='Restaurado: '+resumen+'.';
       render('hoy');
     }catch(e){
@@ -1156,12 +1168,685 @@ function renderClientes(){
   main.appendChild(card);
 }
 
+/* ================= COSTEO =================
+   Modelo de 3 capas:
+     1) Ingredientes  -> precio de compra real -> COP por gramo
+     2) Recetas       -> ratios sobre un ingrediente base + factor de rendimiento
+     3) Productos     -> se arman con porciones de recetas + empaque/gas/mano de obra
+   El food cost % se calcula solo con ingredientes + merma (comparable con la meta
+   de 20%). Empaque, gas y mano de obra entran en "costo total" y "margen real". */
+
+var ING_BASE=[
+ ['yogurt','Yogurt griego',26.5],['pepino','Pepino',3],['ajo','Ajo',26],
+ ['pim_blanca','Pimienta blanca',34],['sal','Sal',8.2],['eneldo','Eneldo',52],
+ ['aceite_oliva','Aceite de oliva',36.6],['harina','Harina',3.9],['agua','Agua',1.9],
+ ['leche','Leche',5.3],['leche_polvo','Leche en polvo',25],['levadura','Levadura',61],
+ ['azucar','Azúcar',8.2],['aceite_mezcla','Aceite mezcla',22],['pernil','Pernil de cerdo',19],
+ ['vin_tinto','Vinagre de vino tinto',16],['tomillo','Tomillo',60],['pim_negra','Pimienta negra',53],
+ ['cebolla','Cebolla',5],['oregano','Orégano',60],['miel','Miel',34],['bondiola','Bondiola',22.5],
+ ['comino','Comino',9],['pim_dulce','Pimienta dulce',8],['vin_blanco','Vinagre de vino blanco',26],
+ ['limon','Jugo de limón',12],['pollo','Pollo',21],['cilantro_m','Cilantro molido',50],
+ ['paprika','Paprika ahumada',43],['cayena','Cayena',40],['pan_rallado','Pan rallado',12],
+ ['perejil','Perejil',20],['carne_molida','Carne molida de res',26],['pasta_tomate','Pasta de tomate',20],
+ ['tomate_lata','Tomate en lata',26],['mantequilla','Mantequilla',24],['parmesano','Parmesano',79],
+ ['berenjena','Berenjena',5],['tomate','Tomate',7],['feta','Queso feta',65],
+ ['cebolla_roja','Cebolla roja',5],['vino_tinto','Vino tinto seco',30]
+];
+
+function ingredientesBase(){
+  var o={};
+  ING_BASE.forEach(function(a){
+    o[a[0]]={k:a[0], n:a[1], compra:{c:1000,u:'g',p:Math.round(a[2]*1000)}, fecha:''};
+  });
+  /* compras reales confirmadas */
+  o.huevo   ={k:'huevo',   n:'Huevos',  compra:{c:30,u:'u',p:21000}, pesoU:50, fecha:'2026-07-28'};
+  o.camaron ={k:'camaron', n:'Camarón', compra:{c:1000,u:'g',p:38000}, fecha:'2026-07-28'};
+  return o;
+}
+
+function recetasBase(){
+  return {
+   r_tzatziki:{k:'r_tzatziki',n:'Tzatziki',base:'yogurt',baseG:600,factor:1,lineas:[
+     ['yogurt',1],['pepino',0.4857142857],['ajo',0.0142857143],['pim_blanca',0.006],
+     ['sal',0.0173],['eneldo',0.01],['vin_blanco',0.021],['aceite_oliva',0.06]]},
+   r_pita:{k:'r_pita',n:'Pan Pita',base:'harina',baseG:1000,factor:0.849,
+     nota:'1.802 g de masa → 1.530 g horneados = 17 panes de 90 g (pérdida 15,1%).',lineas:[
+     ['harina',1],['agua',0.16],['leche',0.55],['leche_polvo',0.025],['levadura',0.004],
+     ['azucar',0.015],['aceite_mezcla',0.025],['sal',0.023]]},
+   r_cerdo:{k:'r_cerdo',n:'Gyros de cerdo (carne)',base:'pernil',baseG:1500,factor:1,
+     nota:'Porción de 150 g de carne cruda adobada.',lineas:[
+     ['pernil',1],['aceite_oliva',0.05],['vin_tinto',0.025],['sal',0.01],['tomillo',0.005],
+     ['pim_negra',0.007],['miel',0.01],['ajo',0.01],['cebolla',0.17],['oregano',0.005]]},
+   r_bondiola:{k:'r_bondiola',n:'Gyros de bondiola (carne)',base:'bondiola',baseG:1500,factor:1,lineas:[
+     ['bondiola',1],['aceite_oliva',0.045],['vin_blanco',0.04],['sal',0.01],['tomillo',0.002],
+     ['pim_negra',0.00235],['pim_dulce',0.00235],['ajo',0.005],['comino',0.002],['oregano',0.002]]},
+   r_pollo:{k:'r_pollo',n:'Gyros de pollo (carne)',base:'pollo',baseG:1500,factor:1,lineas:[
+     ['pollo',1],['aceite_oliva',0.06],['limon',0.08],['ajo',0.005],['oregano',0.006],
+     ['sal',0.012],['pim_negra',0.0023],['miel',0.015]]},
+   r_kebab:{k:'r_kebab',n:'Kebab Thanasis (carne)',base:'carne_molida',baseG:1000,factor:1,lineas:[
+     ['carne_molida',1],['cebolla',0.15],['sal',0.01],['perejil',0.03],['comino',0.01],
+     ['pim_negra',0.004],['aceite_oliva',0.036],['ajo',0.01],['cilantro_m',0.003],
+     ['paprika',0.005],['cayena',0.002],['pan_rallado',0.06],['agua',0.04]]},
+   r_mousaka:{k:'r_mousaka',n:'Mousaka',base:'carne_molida',baseG:108,factor:0.588,
+     nota:'Pérdida por cocción 41,15%: 5.948 g crudo → 3.500 g cocido. Incluye bechamel y berenjena.',lineas:[
+     ['carne_molida',1],['cebolla',0.4],['aceite_oliva',0.075],['ajo',0.008],['pasta_tomate',0.057],
+     ['tomate_lata',0.4],['vino_tinto',0.11],['sal',0.015],['pim_negra',0.004],['leche',1],
+     ['mantequilla',0.1],['harina',0.1],['parmesano',0.05],['huevo',0.04],['berenjena',2.45]]},
+   r_ens_griega:{k:'r_ens_griega',n:'Ensalada Griega',base:'tomate',baseG:100,factor:1,
+     alerta:'Revisar ratios: 3 g de feta y 5 g de pepino para una porción de 250 g parece un error de coma decimal (¿0,30 y 0,51?).',lineas:[
+     ['tomate',1],['pepino',0.051],['cebolla_roja',0.028],['feta',0.03],['pim_blanca',0.002],
+     ['sal',0.004],['aceite_oliva',0.03],['oregano',0.005]]}
+  };
+}
+
+function ensamblesBase(){
+  return {
+   gyros_cerdo:{comp:[['r_cerdo',150],['r_pita',90],['r_tzatziki',55]]},
+   gyros_pollo:{comp:[['r_pollo',150],['r_pita',90],['r_tzatziki',55]]},
+   gyros_bondiola:{comp:[['r_bondiola',150],['r_pita',90],['r_tzatziki',55]]},
+   kebab:{comp:[['r_kebab',150],['r_pita',90],['r_tzatziki',55]]},
+   pita:{comp:[['r_pita',450]]},
+   tzatziki:{comp:[['r_tzatziki',200]]},
+   mousaka:{comp:[['r_mousaka',280]],
+     alerta:'El menú dice 280 g pero el Excel costeaba 350 g. A 350 g el food cost sube a 25,0%. Confirmar la porción real.'},
+   ens_griega:{comp:[['r_ens_griega',250]]},
+   tiro:{costoFijo:13674, nota:'2 láminas de filo por 4 pies. Costo cargado a mano — falta el desglose de ingredientes.'}
+  };
+}
+
+var CFG_BASE={merma:3, meta:20, empaque:0, gas:0, labor:0};
+
+var INGREDIENTES={}, RECETAS={}, ENSAMBLES={}, CFG={};
+
+function costeoModelo(){
+  return {v:1, ingredientes:INGREDIENTES, recetas:RECETAS, ensambles:ENSAMBLES, cfg:CFG};
+}
+function costeoCargarModelo(d){
+  INGREDIENTES = (d && d.ingredientes) ? d.ingredientes : ingredientesBase();
+  RECETAS      = (d && d.recetas)      ? d.recetas      : recetasBase();
+  ENSAMBLES    = (d && d.ensambles)    ? d.ensambles    : ensamblesBase();
+  CFG          = {};
+  for(var k in CFG_BASE) CFG[k]=CFG_BASE[k];
+  if(d && d.cfg) for(var k2 in d.cfg) CFG[k2]=d.cfg[k2];
+}
+
+/* ---- almacenamiento ---- */
+var memoriaRecetas=null;
+function cargarRecetas(cb){
+  if (window.storage && typeof window.storage.get==='function'){
+    window.storage.get('elgriego_recetas').then(function(r){
+      var d=null; try{ if(r && r.value) d=JSON.parse(r.value); }catch(e){}
+      cb(d);
+    }).catch(function(){ cb(null); });
+    return;
+  }
+  if (localStorageDisponible()){
+    try{ var v=localStorage.getItem('elgriego_recetas'); cb(v?JSON.parse(v):null); return; }
+    catch(e){ cb(null); return; }
+  }
+  cb(memoriaRecetas);
+}
+function guardarRecetas(){
+  var d=costeoModelo();
+  memoriaRecetas=d;
+  var s=JSON.stringify(d);
+  if (modoGuardado==='claude' && window.storage && typeof window.storage.set==='function'){
+    window.storage.set('elgriego_recetas', s).catch(function(){});
+    return;
+  }
+  if (modoGuardado==='dispositivo'){
+    try{ localStorage.setItem('elgriego_recetas', s); }catch(e){}
+  }
+}
+
+/* ---- motor de cálculo ---- */
+function num(v){ var n=parseFloat(v); return isNaN(n)?0:n; }
+
+/* COP por gramo a partir de la unidad de compra real */
+function copG(ing){
+  if(!ing || !ing.compra) return 0;
+  var c=num(ing.compra.c), p=num(ing.compra.p);
+  if(!c) return 0;
+  if(ing.compra.u==='u'){ var pu=num(ing.pesoU); return pu ? p/(c*pu) : 0; }
+  return p/c;                      /* g y ml se tratan igual */
+}
+function compraTxt(ing){
+  if(!ing || !ing.compra) return '';
+  var u=ing.compra.u, un=(u==='u'?'und':u);
+  return fmt(num(ing.compra.c))+' '+un+' = '+fmt(num(ing.compra.p))+' COP';
+}
+
+function recetaCalc(rk){
+  var r=RECETAS[rk]; if(!r) return null;
+  var costo=0, crudo=0, lineas=[];
+  (r.lineas||[]).forEach(function(l){
+    var ing=INGREDIENTES[l[0]]; if(!ing) return;
+    var g=num(r.baseG)*num(l[1]), cg=copG(ing);
+    costo+=g*cg; crudo+=g;
+    lineas.push({ing:ing, ratio:num(l[1]), g:g, cg:cg, costo:g*cg});
+  });
+  lineas.sort(function(a,b){ return b.costo-a.costo; });
+  var f=num(r.factor)||1;
+  var fin=crudo*f;
+  return {r:r, lineas:lineas, costo:costo, crudo:crudo, factor:f, final:fin,
+          copGFinal: fin ? costo/fin : 0};
+}
+
+function productoCalc(pk){
+  var p=prod(pk), e=ENSAMBLES[pk];
+  if(!p || !e) return null;
+  var ing=0, det=[], fijo=(e.costoFijo!=null);
+  if(fijo){
+    ing=num(e.costoFijo);
+    det.push({nombre:'Costo de receta (cargado a mano)', g:null, costo:ing});
+  } else {
+    (e.comp||[]).forEach(function(c){
+      var rc=recetaCalc(c[0]); if(!rc) return;
+      var costo=rc.copGFinal*num(c[1]);
+      ing+=costo;
+      det.push({nombre:rc.r.n, g:num(c[1]), costo:costo, rk:c[0]});
+    });
+  }
+  var merma = fijo ? 0 : ing*(num(CFG.merma)/100);
+  var ingT  = ing+merma;
+  var emp=(e.empaque!=null?num(e.empaque):num(CFG.empaque));
+  var gas=(e.gas!=null?num(e.gas):num(CFG.gas));
+  var lab=(e.labor!=null?num(e.labor):num(CFG.labor));
+  var total=ingT+emp+gas+lab;
+  return {p:p, e:e, det:det, fijo:fijo, ing:ing, merma:merma, ingT:ingT,
+          empaque:emp, gas:gas, labor:lab, total:total,
+          fc: p.precio ? ingT/p.precio*100 : 0,
+          margen: p.precio-total,
+          margenPct: p.precio ? (p.precio-total)/p.precio*100 : 0};
+}
+
+/* vuelca el FC calculado sobre PRODUCTOS para que la matriz de menú lo use */
+function aplicarCosteoRecetas(){
+  PRODUCTOS.forEach(function(p){
+    var c=productoCalc(p.key);
+    if(c){ p.fc=Math.round(c.fc*10)/10; p.fcSrc='receta'; }
+    else { p.fcSrc=null; }
+  });
+}
+
+/* gramos crudos de cada ingrediente para una cantidad de producto */
+function ingredientesDe(pk, qty){
+  var e=ENSAMBLES[pk], out={};
+  if(!e || e.costoFijo!=null) return out;
+  (e.comp||[]).forEach(function(c){
+    var rc=recetaCalc(c[0]); if(!rc || !rc.final) return;
+    var frac=(num(c[1])*qty)/rc.final;      /* fracción del lote */
+    rc.lineas.forEach(function(l){
+      out[l.ing.k]=(out[l.ing.k]||0)+l.g*frac;
+    });
+  });
+  return out;
+}
+
+/* ---- vista ---- */
+var costeoVista='resumen';
+var costeoAbierto={};
+
+function chipFC(fc){
+  var m=num(CFG.meta);
+  var cl = fc<=m ? 'ok' : (fc<=m*1.25 ? 'warn' : 'alerta');
+  return '<span class="chip '+cl+'">FC '+fc.toFixed(1)+'%</span>';
+}
+function g(n){ return (n>=100? Math.round(n) : Math.round(n*10)/10).toLocaleString('es-CO')+' g'; }
+
+function renderCosteo(){
+  var pills=el('<div class="pills"></div>');
+  [['resumen','Resumen'],['ingredientes','Ingredientes'],['recetas','Recetas'],
+   ['productos','Productos'],['compras','Compras']].forEach(function(v){
+    var b=el('<button class="pill'+(costeoVista===v[0]?' on':'')+'">'+v[1]+'</button>');
+    b.addEventListener('click', function(){ costeoVista=v[0]; render('costeo'); });
+    pills.appendChild(b);
+  });
+  main.appendChild(pills);
+
+  if(costeoVista==='resumen') costeoResumen();
+  else if(costeoVista==='ingredientes') costeoIngredientes();
+  else if(costeoVista==='recetas') costeoRecetas();
+  else if(costeoVista==='productos') costeoProductos();
+  else costeoCompras();
+}
+
+/* ---------- RESUMEN ---------- */
+function costeoResumen(){
+  var calcs=[], sinReceta=[];
+  PRODUCTOS.forEach(function(p){
+    var c=productoCalc(p.key);
+    if(c) calcs.push(c); else sinReceta.push(p);
+  });
+  var sobreMeta=calcs.filter(function(c){ return c.fc>num(CFG.meta); });
+
+  main.appendChild(el('<div class="kpis">'
+    +'<div class="kpi"><div class="lbl">Costeados</div><div class="val">'+calcs.length+'</div></div>'
+    +'<div class="kpi'+(sobreMeta.length?'':' oliva')+'"><div class="lbl">Sobre meta</div><div class="val">'+sobreMeta.length+'</div></div>'
+    +'<div class="kpi"><div class="lbl">Pendientes</div><div class="val">'+sinReceta.length+'</div></div>'
+    +'</div>'));
+
+  /* avisos de datos que hay que confirmar */
+  var avisos=[];
+  Object.keys(ENSAMBLES).forEach(function(k){
+    if(ENSAMBLES[k].alerta && prod(k)) avisos.push(prod(k).nombre+': '+ENSAMBLES[k].alerta);
+  });
+  Object.keys(RECETAS).forEach(function(k){
+    if(RECETAS[k].alerta) avisos.push(RECETAS[k].n+': '+RECETAS[k].alerta);
+  });
+  if(avisos.length){
+    var av=el('<div class="card"><h2>Por confirmar ('+avisos.length+')</h2></div>');
+    avisos.forEach(function(a){ av.appendChild(el('<div class="aviso" style="margin-bottom:6px">'+esc(a)+'</div>')); });
+    main.appendChild(av);
+  }
+
+  calcs.sort(function(a,b){ return b.fc-a.fc; });
+  var card=el('<div class="card"><h2>Food cost por producto · meta ≤'+num(CFG.meta)+'%</h2>'
+    +'<div class="muted small" style="margin-bottom:8px">El FC son <b>ingredientes + '+num(CFG.merma)+'% de merma</b>. Empaque, gas y mano de obra van aparte, en el margen real.</div></div>');
+  calcs.forEach(function(c){
+    var extra=c.empaque+c.gas+c.labor;
+    card.appendChild(el('<div class="item-row">'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-weight:700">'+esc(c.p.nombre)+'</div>'
+      +'<div class="muted small">ingredientes '+fmt(c.ingT)+(extra?' · otros '+fmt(extra):'')+' · precio '+fmt(c.p.precio)+'</div>'
+      +'<div style="margin-top:3px">'+chipFC(c.fc)+'</div></div>'
+      +'<div style="text-align:right;flex-shrink:0">'
+      +'<div class="money" style="color:'+(c.margen>0?'var(--oliva-osc)':'var(--rojo)')+'">'+fmt(c.margen)+'</div>'
+      +'<div class="muted small">margen '+c.margenPct.toFixed(0)+'%</div></div>'
+      +'</div>'));
+  });
+  main.appendChild(card);
+
+  if(sinReceta.length){
+    var cp=el('<div class="card"><h2>Sin receta ('+sinReceta.length+')</h2>'
+      +'<div class="muted small" style="margin-bottom:6px">Estos usan el estimado de '+FC_ESTIMADO+'%. Agrégales una receta en la pestaña Recetas y luego ármalos en Productos.</div></div>');
+    sinReceta.forEach(function(p){
+      cp.appendChild(el('<div class="item-row"><div style="flex:1"><div style="font-weight:700">'+esc(p.nombre)+'</div>'
+        +'<div class="muted small">'+fmt(p.precio)+' · '+esc(p.unidad)+'</div></div>'
+        +'<span class="chip alerta">sin costear</span></div>'));
+    });
+    main.appendChild(cp);
+  }
+
+  /* parámetros globales */
+  var cfg=el('<div class="card"><h2>Parámetros</h2>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+    +'<div><label class="f">Merma %</label><input class="f" type="number" step="0.5" id="cf-merma" value="'+num(CFG.merma)+'"></div>'
+    +'<div><label class="f">Meta FC %</label><input class="f" type="number" step="1" id="cf-meta" value="'+num(CFG.meta)+'"></div>'
+    +'<div><label class="f">Empaque COP</label><input class="f" type="number" step="50" id="cf-empaque" value="'+num(CFG.empaque)+'"></div>'
+    +'<div><label class="f">Gas COP</label><input class="f" type="number" step="50" id="cf-gas" value="'+num(CFG.gas)+'"></div>'
+    +'<div style="grid-column:1/-1"><label class="f">Mano de obra COP por porción</label><input class="f" type="number" step="50" id="cf-labor" value="'+num(CFG.labor)+'"></div>'
+    +'</div>'
+    +'<div class="muted small" style="margin:6px 0">Empaque, gas y mano de obra aplican a todos los productos; se pueden ajustar uno por uno en Productos.</div>'
+    +'<button class="btn primario" id="cf-save">Guardar parámetros</button></div>');
+  cfg.querySelector('#cf-save').addEventListener('click', function(){
+    CFG.merma=num(cfg.querySelector('#cf-merma').value);
+    CFG.meta=num(cfg.querySelector('#cf-meta').value)||20;
+    CFG.empaque=num(cfg.querySelector('#cf-empaque').value);
+    CFG.gas=num(cfg.querySelector('#cf-gas').value);
+    CFG.labor=num(cfg.querySelector('#cf-labor').value);
+    guardarRecetas(); aplicarCosteoRecetas(); render('costeo');
+  });
+  main.appendChild(cfg);
+
+  main.appendChild(exportarCard());
+}
+
+/* ---------- EXPORTAR CSV ---------- */
+function csvCosteo(){
+  function q(s){ s=String(s==null?'':s); return /[",;\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
+  var L=[];
+  L.push('INGREDIENTES');
+  L.push(['ingrediente','cantidad_compra','unidad','precio_compra','cop_por_g','fecha'].join(';'));
+  Object.keys(INGREDIENTES).forEach(function(k){
+    var i=INGREDIENTES[k];
+    L.push([i.n, num(i.compra.c), i.compra.u, num(i.compra.p), copG(i).toFixed(4), i.fecha||''].map(q).join(';'));
+  });
+  L.push(''); L.push('RECETAS');
+  L.push(['receta','ingrediente','ratio','gramos','cop_por_g','costo_linea'].join(';'));
+  Object.keys(RECETAS).forEach(function(k){
+    var rc=recetaCalc(k); if(!rc) return;
+    rc.lineas.forEach(function(l){
+      L.push([rc.r.n, l.ing.n, l.ratio, l.g.toFixed(2), l.cg.toFixed(4), l.costo.toFixed(2)].map(q).join(';'));
+    });
+    L.push([rc.r.n,'TOTAL','','crudo '+rc.crudo.toFixed(1)+' g','final '+rc.final.toFixed(1)+' g', rc.costo.toFixed(2)].map(q).join(';'));
+  });
+  L.push(''); L.push('PRODUCTOS');
+  L.push(['producto','precio','ingredientes','merma','empaque','gas','mano_obra','costo_total','food_cost_%','margen'].join(';'));
+  PRODUCTOS.forEach(function(p){
+    var c=productoCalc(p.key); if(!c) return;
+    L.push([p.nombre, p.precio, c.ing.toFixed(0), c.merma.toFixed(0), c.empaque, c.gas, c.labor,
+            c.total.toFixed(0), c.fc.toFixed(1), c.margen.toFixed(0)].map(q).join(';'));
+  });
+  return L.join('\n');
+}
+function exportarCard(){
+  var card=el('<div class="card"><h2>Exportar costeo</h2>'
+    +'<div class="muted small" style="margin-bottom:6px">Genera un CSV con ingredientes, recetas y productos — para respaldo o para abrirlo en Excel.</div>'
+    +'<div style="display:flex;gap:8px"><button class="btn oliva" id="cs-copy" style="flex:1">Copiar CSV</button>'
+    +'<a class="btn primario" id="cs-dl" style="flex:1;width:auto">Descargar</a></div>'
+    +'<div class="muted small" id="cs-msg" style="margin-top:6px"></div></div>');
+  var msg=card.querySelector('#cs-msg');
+  card.querySelector('#cs-copy').addEventListener('click', function(){
+    var t=csvCosteo();
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(t).then(function(){ msg.textContent='CSV copiado al portapapeles.'; },
+        function(){ msg.textContent='No se pudo copiar — usa Descargar.'; });
+    } else { msg.textContent='Usa Descargar en este navegador.'; }
+  });
+  var a=card.querySelector('#cs-dl');
+  a.addEventListener('click', function(){
+    try{
+      var blob=new Blob(['﻿'+csvCosteo()], {type:'text/csv;charset=utf-8'});
+      a.href=URL.createObjectURL(blob);
+      a.download='elgriego_costeo_'+hoyISO()+'.csv';
+    }catch(e){ msg.textContent='Este navegador no permite descargar — usa Copiar CSV.'; }
+  });
+  return card;
+}
+
+/* ---------- INGREDIENTES ---------- */
+function costeoIngredientes(){
+  var keys=Object.keys(INGREDIENTES).sort(function(a,b){
+    return INGREDIENTES[a].n.localeCompare(INGREDIENTES[b].n,'es');
+  });
+  var card=el('<div class="card"><h2>Ingredientes ('+keys.length+')</h2>'
+    +'<div class="muted small" style="margin-bottom:8px">Escribe la compra tal como viene en la factura — el costo por gramo se calcula solo.</div></div>');
+
+  keys.forEach(function(k){
+    var i=INGREDIENTES[k];
+    var fila=el('<div class="item-row" style="flex-wrap:wrap;gap:6px"></div>');
+    fila.appendChild(el('<div style="flex:1;min-width:0">'
+      +'<div style="font-weight:700">'+esc(i.n)+'</div>'
+      +'<div class="muted small">'+esc(compraTxt(i))+(i.fecha?' · '+esc(i.fecha):'')+'</div></div>'));
+    var right=el('<div style="text-align:right;flex-shrink:0">'
+      +'<div class="money">'+copG(i).toFixed(2)+'</div>'
+      +'<div class="muted small">COP/g</div></div>');
+    fila.appendChild(right);
+    fila.style.cursor='pointer';
+
+    var esU=(i.compra.u==='u');
+    var form=el('<div style="display:none;width:100%;padding-top:8px;border-top:1px dashed var(--linea)">'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">'
+      +'<div><label class="f">Cantidad</label><input class="f" type="number" step="any" data-c value="'+num(i.compra.c)+'"></div>'
+      +'<div><label class="f">Unidad</label><select class="f" data-u>'
+        +'<option value="g"'+(i.compra.u==='g'?' selected':'')+'>g</option>'
+        +'<option value="ml"'+(i.compra.u==='ml'?' selected':'')+'>ml</option>'
+        +'<option value="u"'+(esU?' selected':'')+'>und</option></select></div>'
+      +'<div><label class="f">Precio COP</label><input class="f" type="number" step="any" data-p value="'+num(i.compra.p)+'"></div>'
+      +'</div>'
+      +'<div data-pu style="display:'+(esU?'block':'none')+'"><label class="f">Peso por unidad (g)</label>'
+      +'<input class="f" type="number" step="any" data-puv value="'+num(i.pesoU)+'"></div>'
+      +'<div class="muted small" data-prev style="margin-top:6px"></div>'
+      +'<div style="display:flex;gap:8px;margin-top:8px">'
+      +'<button class="btn oliva" data-save style="flex:1">Guardar</button>'
+      +'<button class="btn fant" data-cancel>Cancelar</button></div></div>');
+    fila.appendChild(form);
+
+    var iC=form.querySelector('[data-c]'), iU=form.querySelector('[data-u]'),
+        iP=form.querySelector('[data-p]'), iPU=form.querySelector('[data-puv]'),
+        boxPU=form.querySelector('[data-pu]'), prev=form.querySelector('[data-prev]');
+    function refrescar(){
+      boxPU.style.display = iU.value==='u' ? 'block' : 'none';
+      var tmp={compra:{c:iC.value,u:iU.value,p:iP.value}, pesoU:iPU.value};
+      prev.textContent='= '+copG(tmp).toFixed(3)+' COP por gramo';
+    }
+    [iC,iU,iP,iPU].forEach(function(x){ x.addEventListener('input', refrescar); x.addEventListener('change', refrescar); });
+    refrescar();
+
+    fila.addEventListener('click', function(ev){
+      if(form.contains(ev.target)) return;
+      form.style.display = form.style.display==='none' ? 'block' : 'none';
+    });
+    form.querySelector('[data-cancel]').addEventListener('click', function(){ form.style.display='none'; });
+    form.querySelector('[data-save]').addEventListener('click', function(){
+      i.compra={c:num(iC.value), u:iU.value, p:num(iP.value)};
+      if(iU.value==='u') i.pesoU=num(iPU.value);
+      i.fecha=hoyISO();
+      guardarRecetas(); aplicarCosteoRecetas(); render('costeo');
+    });
+    card.appendChild(fila);
+  });
+  main.appendChild(card);
+}
+
+/* ---------- RECETAS ---------- */
+function costeoRecetas(){
+  var keys=Object.keys(RECETAS);
+  var card=el('<div class="card"><h2>Recetas ('+keys.length+')</h2>'
+    +'<div class="muted small" style="margin-bottom:8px">Cada receta se define como proporciones sobre un ingrediente base. El <b>rendimiento</b> convierte el peso crudo en peso servido (cocción, horneado).</div></div>');
+
+  keys.forEach(function(k){
+    var rc=recetaCalc(k); if(!rc) return;
+    var ab=!!costeoAbierto['r'+k];
+    var wrap=el('<div style="border-bottom:1px dashed var(--linea);padding:8px 0"></div>');
+    var top=el('<div class="row" style="cursor:pointer">'
+      +'<div style="flex:1;min-width:0"><div style="font-weight:700">'+esc(rc.r.n)+' <span class="muted small">'+(ab?'▾':'▸')+'</span></div>'
+      +'<div class="muted small">lote '+g(rc.crudo)+' crudo'
+        +(rc.factor!==1 ? ' → '+g(rc.final)+' servido ('+Math.round((1-rc.factor)*100)+'% pérdida)' : '')
+      +'</div></div>'
+      +'<div style="text-align:right"><div class="money">'+rc.copGFinal.toFixed(2)+'</div>'
+      +'<div class="muted small">COP/g servido</div></div></div>');
+    top.addEventListener('click', function(){ costeoAbierto['r'+k]=!ab; render('costeo'); });
+    wrap.appendChild(top);
+
+    if(ab){
+      var det=el('<div style="padding:6px 0 0"></div>');
+      if(rc.r.nota) det.appendChild(el('<div class="banner" style="margin-bottom:6px">'+esc(rc.r.nota)+'</div>'));
+      if(rc.r.alerta) det.appendChild(el('<div class="aviso" style="margin-bottom:6px">'+esc(rc.r.alerta)+'</div>'));
+      rc.lineas.forEach(function(l){
+        var pct=rc.costo? l.costo/rc.costo*100 : 0;
+        det.appendChild(el('<div class="row" style="padding:3px 0">'
+          +'<div style="flex:1;min-width:0"><div class="small">'+esc(l.ing.n)+'</div>'
+          +'<div class="bar"><i style="width:'+Math.min(100,pct).toFixed(1)+'%"></i></div></div>'
+          +'<div style="text-align:right;min-width:96px">'
+          +'<div class="small money">'+fmt(l.costo)+'</div>'
+          +'<div class="muted small">'+g(l.g)+' · '+pct.toFixed(0)+'%</div></div></div>'));
+      });
+      det.appendChild(el('<hr class="s"/><div class="row"><b class="small">Costo del lote</b>'
+        +'<b class="money">'+fmt(rc.costo)+'</b></div>'));
+
+      var ed=el('<div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px">'
+        +'<div><label class="f">Base: '+esc((INGREDIENTES[rc.r.base]||{n:rc.r.base}).n)+' (g)</label>'
+        +'<input class="f" type="number" step="any" data-bg value="'+num(rc.r.baseG)+'"></div>'
+        +'<div><label class="f">Rendimiento (1 = sin pérdida)</label>'
+        +'<input class="f" type="number" step="0.001" data-f value="'+rc.factor+'"></div></div>');
+      det.appendChild(ed);
+      var save=el('<button class="btn oliva" style="width:100%;margin-top:8px">Guardar receta</button>');
+      save.addEventListener('click', function(){
+        rc.r.baseG=num(ed.querySelector('[data-bg]').value)||rc.r.baseG;
+        rc.r.factor=num(ed.querySelector('[data-f]').value)||1;
+        guardarRecetas(); aplicarCosteoRecetas(); render('costeo');
+      });
+      det.appendChild(save);
+      wrap.appendChild(det);
+    }
+    card.appendChild(wrap);
+  });
+  main.appendChild(card);
+  main.appendChild(el('<div class="card"><h2>Recetas por levantar</h2>'
+    +'<div class="small" style="display:grid;gap:6px">'
+    +'<div>✦ <b>Spanakopitakia</b> — comparte el filo con Tiropitakia; falta el desglose del relleno.</div>'
+    +'<div>✦ <b>Tiropitakia</b> — costo cargado a mano (13.674 por pack de 6). Falta el desglose para que se recalcule solo.</div>'
+    +'<div>✦ <b>Pastitsio, Prasopitakia, Ensalada Dakos</b> — sin receta.</div>'
+    +'<div>✦ <b>Gambas Saganaki</b> — camarón ya cargado a 38.000/kg; falta la receta.</div>'
+    +'</div></div>'));
+}
+
+/* ---------- PRODUCTOS ---------- */
+function costeoProductos(){
+  var card=el('<div class="card"><h2>Productos armados</h2>'
+    +'<div class="muted small" style="margin-bottom:8px">Cada producto se arma con porciones de receta, en gramos servidos.</div></div>');
+
+  PRODUCTOS.forEach(function(p){
+    var c=productoCalc(p.key); if(!c) return;
+    var ab=!!costeoAbierto['p'+p.key];
+    var wrap=el('<div style="border-bottom:1px dashed var(--linea);padding:8px 0"></div>');
+    var top=el('<div class="row" style="cursor:pointer">'
+      +'<div style="flex:1;min-width:0"><div style="font-weight:700">'+esc(p.nombre)+' <span class="muted small">'+(ab?'▾':'▸')+'</span></div>'
+      +'<div class="muted small">'+fmt(p.precio)+' · '+esc(p.unidad)+'</div>'
+      +'<div style="margin-top:3px">'+chipFC(c.fc)+'</div></div>'
+      +'<div style="text-align:right"><div class="money">'+fmt(c.total)+'</div>'
+      +'<div class="muted small">costo total</div></div></div>');
+    top.addEventListener('click', function(){ costeoAbierto['p'+p.key]=!ab; render('costeo'); });
+    wrap.appendChild(top);
+
+    if(ab){
+      var det=el('<div style="padding:6px 0 0"></div>');
+      if(c.e.alerta) det.appendChild(el('<div class="aviso" style="margin-bottom:6px">'+esc(c.e.alerta)+'</div>'));
+      if(c.e.nota)   det.appendChild(el('<div class="banner" style="margin-bottom:6px">'+esc(c.e.nota)+'</div>'));
+
+      c.det.forEach(function(d){
+        det.appendChild(el('<div class="row" style="padding:3px 0"><div class="small">'+esc(d.nombre)
+          +(d.g!=null?' <span class="muted">'+g(d.g)+'</span>':'')+'</div>'
+          +'<div class="small money">'+fmt(d.costo)+'</div></div>'));
+      });
+      if(c.merma) det.appendChild(el('<div class="row" style="padding:3px 0"><div class="small muted">Merma '+num(CFG.merma)+'%</div>'
+        +'<div class="small money">'+fmt(c.merma)+'</div></div>'));
+      det.appendChild(el('<div class="row" style="padding:3px 0"><b class="small">Ingredientes</b>'
+        +'<b class="money">'+fmt(c.ingT)+'</b></div>'));
+      [['Empaque',c.empaque],['Gas',c.gas],['Mano de obra',c.labor]].forEach(function(x){
+        if(!x[1]) return;
+        det.appendChild(el('<div class="row" style="padding:3px 0"><div class="small muted">'+x[0]+'</div>'
+          +'<div class="small money">'+fmt(x[1])+'</div></div>'));
+      });
+      det.appendChild(el('<hr class="s"/>'
+        +'<div class="row"><b class="small">Costo total</b><b class="money">'+fmt(c.total)+'</b></div>'
+        +'<div class="row"><b class="small">Margen</b><b class="money" style="color:'+(c.margen>0?'var(--oliva-osc)':'var(--rojo)')+'">'
+        +fmt(c.margen)+' ('+c.margenPct.toFixed(0)+'%)</b></div>'));
+
+      /* editar porciones */
+      if(!c.fijo){
+        var eds=el('<div style="margin-top:8px"></div>');
+        (c.e.comp||[]).forEach(function(comp, idx){
+          var r=RECETAS[comp[0]];
+          eds.appendChild(el('<label class="f">'+esc(r?r.n:comp[0])+' (g servidos)</label>'));
+          var inp=el('<input class="f" type="number" step="any" value="'+num(comp[1])+'">');
+          inp.setAttribute('data-idx', idx);
+          eds.appendChild(inp);
+        });
+        det.appendChild(eds);
+      }
+      var extra=el('<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px">'
+        +'<div><label class="f">Empaque</label><input class="f" type="number" step="50" data-emp value="'+c.empaque+'"></div>'
+        +'<div><label class="f">Gas</label><input class="f" type="number" step="50" data-gas value="'+c.gas+'"></div>'
+        +'<div><label class="f">M. obra</label><input class="f" type="number" step="50" data-lab value="'+c.labor+'"></div></div>');
+      det.appendChild(extra);
+
+      var save=el('<button class="btn oliva" style="width:100%;margin-top:8px">Guardar producto</button>');
+      save.addEventListener('click', function(){
+        if(!c.fijo){
+          var inputs=det.querySelectorAll('input[data-idx]');
+          for(var q=0;q<inputs.length;q++){
+            var ix=parseInt(inputs[q].getAttribute('data-idx'),10);
+            c.e.comp[ix][1]=num(inputs[q].value);
+          }
+        }
+        c.e.empaque=num(extra.querySelector('[data-emp]').value);
+        c.e.gas=num(extra.querySelector('[data-gas]').value);
+        c.e.labor=num(extra.querySelector('[data-lab]').value);
+        guardarRecetas(); aplicarCosteoRecetas(); render('costeo');
+      });
+      det.appendChild(save);
+      wrap.appendChild(det);
+    }
+    card.appendChild(wrap);
+  });
+  main.appendChild(card);
+}
+
+/* ---------- LISTA DE COMPRAS ---------- */
+var comprasSel={};
+function costeoCompras(){
+  var activos=pedidos.filter(function(p){
+    return p.estado!=='Entregado' && p.estado!=='Cancelado';
+  });
+
+  var card=el('<div class="card"><h2>Lista de compras</h2>'
+    +'<div class="muted small" style="margin-bottom:8px">Suma los ingredientes crudos de los pedidos activos. Marca los que quieras incluir.</div></div>');
+
+  if(activos.length===0){
+    card.appendChild(el('<div class="muted small">No hay pedidos activos. Usa el cálculo manual de abajo.</div>'));
+  } else {
+    activos.forEach(function(p){
+      var on = comprasSel[p.id]!==false;
+      var b=el('<div class="row" style="cursor:pointer;padding:6px 0;border-bottom:1px dashed var(--linea)">'
+        +'<div style="flex:1;min-width:0"><div class="small" style="font-weight:700">'
+        +(on?'☑':'☐')+' '+esc(p.cliente||'Sin nombre')+'</div>'
+        +'<div class="muted small">'+esc(p.fecha)+' · '+esc(p.estado)+'</div></div></div>');
+      b.addEventListener('click', function(){ comprasSel[p.id]=!on; render('costeo'); });
+      card.appendChild(b);
+    });
+  }
+  main.appendChild(card);
+
+  /* cantidades manuales */
+  var man=el('<div class="card"><h2>Agregar a mano</h2>'
+    +'<div class="muted small" style="margin-bottom:6px">Para producción sin pedido — por ejemplo un lote para congelar.</div></div>');
+  var manQty={};
+  PRODUCTOS.forEach(function(p){
+    if(!ENSAMBLES[p.key] || ENSAMBLES[p.key].costoFijo!=null) return;
+    var row=el('<div class="item-row"><div style="flex:1"><div class="small">'+esc(p.nombre)+'</div></div>'
+      +'<div class="qty"><button data-m>−</button><span>0</span><button data-p>+</button></div></div>');
+    var span=row.querySelector('span');
+    manQty[p.key]=0;
+    row.querySelector('[data-m]').addEventListener('click', function(){
+      if(manQty[p.key]>0){ manQty[p.key]--; span.textContent=manQty[p.key]; recalc(); }
+    });
+    row.querySelector('[data-p]').addEventListener('click', function(){
+      manQty[p.key]++; span.textContent=manQty[p.key]; recalc();
+    });
+    man.appendChild(row);
+  });
+  main.appendChild(man);
+
+  var out=el('<div class="card"><h2>Ingredientes a comprar</h2><div id="lc-body"></div></div>');
+  main.appendChild(out);
+
+  function recalc(){
+    var total={};
+    activos.forEach(function(p){
+      if(comprasSel[p.id]===false) return;
+      (p.items||[]).forEach(function(it){
+        var sub=ingredientesDe(it.key, it.qty||0);
+        for(var k in sub) total[k]=(total[k]||0)+sub[k];
+      });
+    });
+    for(var pk in manQty){
+      if(!manQty[pk]) continue;
+      var sub2=ingredientesDe(pk, manQty[pk]);
+      for(var k2 in sub2) total[k2]=(total[k2]||0)+sub2[k2];
+    }
+    var body=out.querySelector('#lc-body');
+    body.innerHTML='';
+    var keys=Object.keys(total).filter(function(k){ return total[k]>0.005; })
+      .sort(function(a,b){ return total[b]*copG(INGREDIENTES[b])-total[a]*copG(INGREDIENTES[a]); });
+    if(!keys.length){ body.appendChild(el('<div class="muted small">Nada seleccionado todavía.</div>')); return; }
+    var suma=0;
+    keys.forEach(function(k){
+      var i=INGREDIENTES[k], costo=total[k]*copG(i); suma+=costo;
+      body.appendChild(el('<div class="row" style="padding:4px 0;border-bottom:1px dashed var(--linea)">'
+        +'<div class="small" style="flex:1">'+esc(i.n)+'</div>'
+        +'<div style="text-align:right"><div class="small money">'+g(total[k])+'</div>'
+        +'<div class="muted small">'+fmt(costo)+'</div></div></div>'));
+    });
+    body.appendChild(el('<div class="row" style="margin-top:6px"><b class="small">Total insumos</b>'
+      +'<b class="money">'+fmt(suma)+'</b></div>'));
+  }
+  recalc();
+}
+
 /* ================= INICIO ================= */
 cargarPedidos(function(d){
   pedidos=d;
   cargarCosteos(function(costeos){
     aplicarCosteos(costeos);
-    render('hoy');
+    cargarRecetas(function(rec){
+      costeoCargarModelo(rec);
+      if(!rec) guardarRecetas();      /* primera vez: deja el modelo base guardado */
+      aplicarCosteoRecetas();         /* el FC por receta manda sobre el manual */
+      render('hoy');
+    });
   });
 });
 </script>
