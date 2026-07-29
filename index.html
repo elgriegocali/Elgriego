@@ -143,6 +143,15 @@ var ESTADOS = ['Nuevo','Confirmado','En cocina','Despachado','Entregado','Cancel
 function fmt(n){ return Math.round(n).toLocaleString('es-CO'); }
 function prod(k){ for(var i=0;i<PRODUCTOS.length;i++) if(PRODUCTOS[i].key===k) return PRODUCTOS[i]; return null; }
 function fcDe(p){ return p.fc!=null ? p.fc : FC_ESTIMADO; }
+/* Clasifica un food cost contra la meta ideal (banda min–max).
+   Por debajo o dentro de la banda es 'ok' (más barato nunca es un problema);
+   por encima se avisa, y bien por encima se marca en rojo. */
+function claseFC(fc){
+  var hi=num(CFG.metaMax);
+  if(fc<=hi) return 'ok';
+  return (fc<=hi*1.25) ? 'warn' : 'alerta';
+}
+function textoMetaBanda(){ return num(CFG.metaMin)+'\u2013'+num(CFG.metaMax); }
 function hoyISO(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function mesDe(f){ return (f||'').slice(0,7); }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -341,8 +350,8 @@ function renderHoy(){
   if(pendCobro.length>0){
     att='💰 '+pendCobro.length+' pedido'+(pendCobro.length>1?'s':'')+' por cobrar — '+fmt(totalPend);
     attCls='aviso'; attTab='pedidos';
-  } else if(tMes>0 && pctFC>24){
-    att='⚠ Food cost del mes en '+pctFC.toFixed(1)+'% — sobre la meta de 20%';
+  } else if(tMes>0 && claseFC(pctFC)!=='ok'){
+    att='⚠ Food cost del mes en '+pctFC.toFixed(1)+'% — fuera de la meta de '+textoMetaBanda()+'%';
     attCls='aviso'; attTab='menu';
   } else if(enProceso.length>0){
     att=enProceso.length+' pedido'+(enProceso.length>1?'s':'')+' en proceso · toca para ver';
@@ -354,7 +363,7 @@ function renderHoy(){
   if(attTab) attEl.addEventListener('click', function(){ render(attTab); });
   main.appendChild(attEl);
 
-  var fcChip = pctFC<=20?'ok':(pctFC<=24?'warn':'alerta');
+  var fcChip = claseFC(pctFC);
   var salud=el('<div class="card"><h2>Resumen del negocio</h2>'
     +'<div class="kpis" style="margin-bottom:10px">'
     +'<div class="kpi"><div class="lbl">Ventas mes</div><div class="val">'+fmt(tMes)+'</div></div>'
@@ -364,7 +373,7 @@ function renderHoy(){
     +'<div class="row"><span class="muted">Ventas hoy</span><span class="money">'+fmt(tHoy)+'</span></div>'
     +'<hr class="s">'
     +'<div class="row"><span class="muted">Food cost del mes</span>'
-      +(tMes>0?'<span class="chip '+fcChip+'">'+pctFC.toFixed(1)+'% · meta ≤20%</span>':'<span class="muted small">sin ventas aún</span>')+'</div>'
+      +(tMes>0?'<span class="chip '+fcChip+'">'+pctFC.toFixed(1)+'% · meta '+textoMetaBanda()+'%</span>':'<span class="muted small">sin ventas aún</span>')+'</div>'
     +'<div class="row"><span class="muted">Prom. mensual 2026</span><span class="money">'+fmt(promMes)+'</span></div>'
     +'<div class="row"><span class="muted">En proceso hoy</span><span class="money">'+enProceso.length+'</span></div>'
     +'<hr class="s">'
@@ -417,7 +426,7 @@ function renderHoy(){
     var pct=cMes/tMes*100;
     main.appendChild(el('<div class="card"><h2>Food cost del mes</h2>'
       +'<div class="row"><span class="muted">Costo estimado de ingredientes</span><span class="money">'+fmt(cMes)+'</span></div>'
-      +'<div class="row"><span class="muted">% sobre ventas</span><span class="chip '+(pct<=20?'ok':(pct<=24?'warn':'alerta'))+'">'+pct.toFixed(1)+'% · meta ≤20%</span></div>'
+      +'<div class="row"><span class="muted">% sobre ventas</span><span class="chip '+claseFC(pct)+'">'+pct.toFixed(1)+'% · meta '+textoMetaBanda()+'%</span></div>'
       +'<div class="muted small" style="margin-top:8px">Los items sin costear usan un estimado de '+FC_ESTIMADO+'%.</div></div>'));
   }
 }
@@ -777,7 +786,7 @@ function renderMenu(){
       +'<div style="margin-top:3px">'
       +(p.clase?'<span class="chip '+chipClase(p.clase)+'">'+esc(p.clase)+'</span> ':'')
       +(p.fc!=null
-        ? '<span class="chip '+(p.fc<=20?'ok':'warn')+'">FC '+p.fc+'%</span>'
+        ? '<span class="chip '+claseFC(p.fc)+'">FC '+p.fc+'%</span>'
           +(p.fcSrc==='receta'?' <span class="chip neutro">por receta</span>':'')
         : '<span class="chip alerta">sin costear</span>')
       +'</div></div>');
@@ -810,7 +819,7 @@ function renderMenu(){
       var v=parseFloat(input.value);
       if(!isNaN(v) && v>0){
         var margen=p.precio*(1-v/100);
-        preview.textContent='Margen estimado: '+fmt(margen)+' COP · '+(v<=20?'✓ dentro de meta':'⚠ por encima del 20%');
+        preview.textContent='Margen estimado: '+fmt(margen)+' COP · '+(v<=num(CFG.metaMax)?'✓ dentro de meta':'⚠ por encima de '+num(CFG.metaMax)+'%');
       } else { preview.textContent=''; }
     });
 
@@ -960,7 +969,7 @@ function renderMenu(){
   var costeados=PRODUCTOS.filter(function(p){return p.fc!=null;});
   var pendientes=PRODUCTOS.filter(function(p){return p.fc==null;});
 
-  var cardC=el('<div class="card"><h2>Costeados · meta ≤20% food cost</h2></div>');
+  var cardC=el('<div class="card"><h2>Costeados · meta '+textoMetaBanda()+'% food cost</h2></div>');
   costeados.forEach(function(p){ cardC.appendChild(filaDOM(p, true)); });
   main.appendChild(cardC);
 
@@ -1258,7 +1267,7 @@ function ensamblesBase(){
   };
 }
 
-var CFG_BASE={merma:3, meta:20, empaque:0, gas:0, labor:0};
+var CFG_BASE={merma:3, metaMin:28, metaMax:30, empaque:0, gas:0, labor:0};
 
 var INGREDIENTES={}, RECETAS={}, ENSAMBLES={}, CFG={};
 
@@ -1304,6 +1313,7 @@ function costeoCargarModelo(d){
   CFG          = {};
   for(var k in CFG_BASE) CFG[k]=CFG_BASE[k];
   if(d && d.cfg) for(var k2 in d.cfg) CFG[k2]=d.cfg[k2];
+  delete CFG.meta;   /* reemplazado por metaMin/metaMax */
 }
 
 /* ---- almacenamiento ---- */
@@ -1480,9 +1490,7 @@ var costeoVista='resumen';
 var costeoAbierto={};
 
 function chipFC(fc){
-  var m=num(CFG.meta);
-  var cl = fc<=m ? 'ok' : (fc<=m*1.25 ? 'warn' : 'alerta');
-  return '<span class="chip '+cl+'">FC '+fc.toFixed(1)+'%</span>';
+  return '<span class="chip '+claseFC(fc)+'">FC '+fc.toFixed(1)+'%</span>';
 }
 function g(n){ return (n>=100? Math.round(n) : Math.round(n*10)/10).toLocaleString('es-CO')+' g'; }
 
@@ -1510,7 +1518,7 @@ function costeoResumen(){
     var c=productoCalc(p.key);
     if(c && !c.vacio) calcs.push(c); else sinReceta.push(p);
   });
-  var sobreMeta=calcs.filter(function(c){ return c.fc>num(CFG.meta); });
+  var sobreMeta=calcs.filter(function(c){ return c.fc>num(CFG.metaMax); });
 
   main.appendChild(el('<div class="kpis">'
     +'<div class="kpi"><div class="lbl">Costeados</div><div class="val">'+calcs.length+'</div></div>'
@@ -1533,7 +1541,7 @@ function costeoResumen(){
   }
 
   calcs.sort(function(a,b){ return b.fc-a.fc; });
-  var card=el('<div class="card"><h2>Food cost por producto · meta ≤'+num(CFG.meta)+'%</h2>'
+  var card=el('<div class="card"><h2>Food cost por producto · meta '+textoMetaBanda()+'%</h2>'
     +'<div class="muted small" style="margin-bottom:8px">El FC son <b>ingredientes + '+num(CFG.merma)+'% de merma</b>. Empaque, gas y mano de obra van aparte, en el margen real.</div></div>');
   calcs.forEach(function(c){
     var extra=c.empaque+c.gas+c.labor;
@@ -1564,7 +1572,8 @@ function costeoResumen(){
   var cfg=el('<div class="card"><h2>Parámetros</h2>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
     +'<div><label class="f">Merma %</label><input class="f" type="number" step="0.5" id="cf-merma" value="'+num(CFG.merma)+'"></div>'
-    +'<div><label class="f">Meta FC %</label><input class="f" type="number" step="1" id="cf-meta" value="'+num(CFG.meta)+'"></div>'
+    +'<div><label class="f">Meta mínima %</label><input class="f" type="number" step="1" id="cf-metamin" value="'+num(CFG.metaMin)+'"></div>'
+    +'<div><label class="f">Meta máxima %</label><input class="f" type="number" step="1" id="cf-metamax" value="'+num(CFG.metaMax)+'"></div>'
     +'<div><label class="f">Empaque COP</label><input class="f" type="number" step="50" id="cf-empaque" value="'+num(CFG.empaque)+'"></div>'
     +'<div><label class="f">Gas COP</label><input class="f" type="number" step="50" id="cf-gas" value="'+num(CFG.gas)+'"></div>'
     +'<div style="grid-column:1/-1"><label class="f">Mano de obra COP por porción</label><input class="f" type="number" step="50" id="cf-labor" value="'+num(CFG.labor)+'"></div>'
@@ -1573,7 +1582,9 @@ function costeoResumen(){
     +'<button class="btn primario" id="cf-save">Guardar parámetros</button></div>');
   cfg.querySelector('#cf-save').addEventListener('click', function(){
     CFG.merma=num(cfg.querySelector('#cf-merma').value);
-    CFG.meta=num(cfg.querySelector('#cf-meta').value)||20;
+    CFG.metaMin=num(cfg.querySelector('#cf-metamin').value)||28;
+    CFG.metaMax=num(cfg.querySelector('#cf-metamax').value)||30;
+    if(CFG.metaMin>CFG.metaMax){ var t=CFG.metaMin; CFG.metaMin=CFG.metaMax; CFG.metaMax=t; }
     CFG.empaque=num(cfg.querySelector('#cf-empaque').value);
     CFG.gas=num(cfg.querySelector('#cf-gas').value);
     CFG.labor=num(cfg.querySelector('#cf-labor').value);
