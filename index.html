@@ -828,6 +828,7 @@ function renderMenu(){
       var v=parseFloat(input.value);
       if(isNaN(v)||v<=0||v>100){ alert('Ingresa un % válido entre 1 y 100.'); return; }
       p.fc=Math.round(v*10)/10;
+      p.fcManual=p.fc;
       cargarCosteos(function(costeos){
         costeos[p.key]=p.fc;
         guardarCosteos(costeos);
@@ -1403,12 +1404,15 @@ function productoCalc(pk){
           margenPct: p.precio ? (p.precio-total)/p.precio*100 : 0};
 }
 
-/* vuelca el FC calculado sobre PRODUCTOS para que la matriz de menú lo use */
+/* Vuelca el FC calculado sobre PRODUCTOS para que la matriz de menú lo use.
+   Guarda el FC manual la primera vez, para poder volver a él si al producto
+   se le quita la receta: si no, quedaba pegado el último valor calculado. */
 function aplicarCosteoRecetas(){
   PRODUCTOS.forEach(function(p){
+    if(p.fcManual===undefined) p.fcManual=(p.fc==null?null:p.fc);
     var c=productoCalc(p.key);
     if(c){ p.fc=Math.round(c.fc*10)/10; p.fcSrc='receta'; }
-    else { p.fcSrc=null; }
+    else { p.fc=p.fcManual; p.fcSrc=null; }
   });
 }
 
@@ -1425,6 +1429,47 @@ function ingredientesDe(pk, qty){
   });
   return out;
 }
+
+/* ---- crear / borrar: claves e integridad referencial ---- */
+function slugKey(nombre, existentes, pre){
+  var b=(nombre||'').toLowerCase()
+    .replace(/[áàä]/g,'a').replace(/[éèë]/g,'e').replace(/[íìï]/g,'i')
+    .replace(/[óòö]/g,'o').replace(/[úùü]/g,'u').replace(/ñ/g,'n')
+    .replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'');
+  if(!b) b='item';
+  b=(pre||'')+b;
+  var k=b, i=2;
+  while(existentes[k]){ k=b+'_'+i; i++; }
+  return k;
+}
+/* Nombres de las recetas que usan un ingrediente (para no borrarlo a ciegas). */
+function recetasQueUsan(ingKey){
+  var out=[];
+  Object.keys(RECETAS).forEach(function(rk){
+    var r=RECETAS[rk];
+    var enLineas=(r.lineas||[]).some(function(l){ return l[0]===ingKey; });
+    if(r.base===ingKey || enLineas) out.push(r.n);
+  });
+  return out;
+}
+/* Nombres de los productos que usan una receta. */
+function productosQueUsan(recKey){
+  var out=[];
+  Object.keys(ENSAMBLES).forEach(function(pk){
+    var e=ENSAMBLES[pk];
+    if((e.comp||[]).some(function(c){ return c[0]===recKey; })){
+      var p=prod(pk); out.push(p?p.nombre:pk);
+    }
+  });
+  return out;
+}
+function ingredientesOrdenados(){
+  return Object.keys(INGREDIENTES).sort(function(a,b){
+    return INGREDIENTES[a].n.localeCompare(INGREDIENTES[b].n,'es');
+  });
+}
+function nEdit(x){ return Math.round(num(x)*1000)/1000; }   /* gramos legibles en inputs */
+function guardarYRefrescar(){ guardarRecetas(); aplicarCosteoRecetas(); render('costeo'); }
 
 /* ---- vista ---- */
 var costeoVista='resumen';
@@ -1590,11 +1635,54 @@ function exportarCard(){
 
 /* ---------- INGREDIENTES ---------- */
 function costeoIngredientes(){
-  var keys=Object.keys(INGREDIENTES).sort(function(a,b){
-    return INGREDIENTES[a].n.localeCompare(INGREDIENTES[b].n,'es');
-  });
+  var keys=ingredientesOrdenados();
+
+  /* alta */
+  var nuevo=el('<div class="card"><h2>Nuevo ingrediente</h2>'
+    +'<label class="f">Nombre</label><input class="f" data-n placeholder="ej. Espinaca">'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">'
+    +'<div><label class="f">Cantidad</label><input class="f" type="number" step="any" data-c placeholder="1000"></div>'
+    +'<div><label class="f">Unidad</label><select class="f" data-u>'
+      +'<option value="g">g</option><option value="ml">ml</option><option value="u">und</option></select></div>'
+    +'<div><label class="f">Precio COP</label><input class="f" type="number" step="any" data-p placeholder="8000"></div>'
+    +'</div>'
+    +'<div data-pu style="display:none"><label class="f">Peso por unidad (g)</label>'
+    +'<input class="f" type="number" step="any" data-puv placeholder="50"></div>'
+    +'<div class="muted small" data-prev style="margin:6px 0">Escribe la compra tal como viene en la factura.</div>'
+    +'<button class="btn primario" data-add>Agregar ingrediente</button>'
+    +'<div class="muted small" data-msg style="margin-top:6px"></div></div>');
+  (function(){
+    var nN=nuevo.querySelector('[data-n]'), nC=nuevo.querySelector('[data-c]'),
+        nU=nuevo.querySelector('[data-u]'), nP=nuevo.querySelector('[data-p]'),
+        nPU=nuevo.querySelector('[data-puv]'), boxPU=nuevo.querySelector('[data-pu]'),
+        prev=nuevo.querySelector('[data-prev]'), msg=nuevo.querySelector('[data-msg]');
+    function refrescar(){
+      boxPU.style.display = nU.value==='u' ? 'block' : 'none';
+      var cg=copG({compra:{c:nC.value,u:nU.value,p:nP.value}, pesoU:nPU.value});
+      prev.textContent = cg ? ('= '+cg.toFixed(3)+' COP por gramo')
+                            : 'Escribe la compra tal como viene en la factura.';
+    }
+    [nC,nU,nP,nPU].forEach(function(x){
+      x.addEventListener('input', refrescar); x.addEventListener('change', refrescar);
+    });
+    nuevo.querySelector('[data-add]').addEventListener('click', function(){
+      var nombre=(nN.value||'').trim();
+      if(!nombre){ msg.textContent='Ponle un nombre.'; return; }
+      if(!num(nC.value) || !num(nP.value)){ msg.textContent='Faltan la cantidad y el precio de compra.'; return; }
+      if(nU.value==='u' && !num(nPU.value)){ msg.textContent='Si compras por unidad, dime cuánto pesa cada una.'; return; }
+      var repetido=Object.keys(INGREDIENTES).filter(function(k){
+        return INGREDIENTES[k].n.toLowerCase()===nombre.toLowerCase(); });
+      if(repetido.length){ msg.textContent='Ya existe un ingrediente con ese nombre.'; return; }
+      var k=slugKey(nombre, INGREDIENTES);
+      INGREDIENTES[k]={k:k, n:nombre, compra:{c:num(nC.value), u:nU.value, p:num(nP.value)}, fecha:hoyISO()};
+      if(nU.value==='u') INGREDIENTES[k].pesoU=num(nPU.value);
+      guardarYRefrescar();
+    });
+  })();
+  main.appendChild(nuevo);
+
   var card=el('<div class="card"><h2>Ingredientes ('+keys.length+')</h2>'
-    +'<div class="muted small" style="margin-bottom:8px">Escribe la compra tal como viene en la factura — el costo por gramo se calcula solo.</div></div>');
+    +'<div class="muted small" style="margin-bottom:8px">Toca uno para editar su compra, renombrarlo o eliminarlo. El costo por gramo se calcula solo.</div></div>');
 
   keys.forEach(function(k){
     var i=INGREDIENTES[k];
@@ -1602,14 +1690,14 @@ function costeoIngredientes(){
     fila.appendChild(el('<div style="flex:1;min-width:0">'
       +'<div style="font-weight:700">'+esc(i.n)+'</div>'
       +'<div class="muted small">'+esc(compraTxt(i))+(i.fecha?' · '+esc(i.fecha):'')+'</div></div>'));
-    var right=el('<div style="text-align:right;flex-shrink:0">'
+    fila.appendChild(el('<div style="text-align:right;flex-shrink:0">'
       +'<div class="money">'+copG(i).toFixed(2)+'</div>'
-      +'<div class="muted small">COP/g</div></div>');
-    fila.appendChild(right);
+      +'<div class="muted small">COP/g</div></div>'));
     fila.style.cursor='pointer';
 
     var esU=(i.compra.u==='u');
     var form=el('<div style="display:none;width:100%;padding-top:8px;border-top:1px dashed var(--linea)">'
+      +'<label class="f">Nombre</label><input class="f" data-nom value="'+esc(i.n)+'">'
       +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">'
       +'<div><label class="f">Cantidad</label><input class="f" type="number" step="any" data-c value="'+num(i.compra.c)+'"></div>'
       +'<div><label class="f">Unidad</label><select class="f" data-u>'
@@ -1623,18 +1711,22 @@ function costeoIngredientes(){
       +'<div class="muted small" data-prev style="margin-top:6px"></div>'
       +'<div style="display:flex;gap:8px;margin-top:8px">'
       +'<button class="btn oliva" data-save style="flex:1">Guardar</button>'
-      +'<button class="btn fant" data-cancel>Cancelar</button></div></div>');
+      +'<button class="btn fant" data-cancel>Cancelar</button>'
+      +'<button class="btn fant" data-del>Eliminar</button></div>'
+      +'<div class="muted small" data-msg style="margin-top:6px"></div></div>');
     fila.appendChild(form);
 
-    var iC=form.querySelector('[data-c]'), iU=form.querySelector('[data-u]'),
-        iP=form.querySelector('[data-p]'), iPU=form.querySelector('[data-puv]'),
-        boxPU=form.querySelector('[data-pu]'), prev=form.querySelector('[data-prev]');
+    var iNom=form.querySelector('[data-nom]'), iC=form.querySelector('[data-c]'),
+        iU=form.querySelector('[data-u]'), iP=form.querySelector('[data-p]'),
+        iPU=form.querySelector('[data-puv]'), boxPU=form.querySelector('[data-pu]'),
+        prev=form.querySelector('[data-prev]'), msg=form.querySelector('[data-msg]');
     function refrescar(){
       boxPU.style.display = iU.value==='u' ? 'block' : 'none';
-      var tmp={compra:{c:iC.value,u:iU.value,p:iP.value}, pesoU:iPU.value};
-      prev.textContent='= '+copG(tmp).toFixed(3)+' COP por gramo';
+      prev.textContent='= '+copG({compra:{c:iC.value,u:iU.value,p:iP.value}, pesoU:iPU.value}).toFixed(3)+' COP por gramo';
     }
-    [iC,iU,iP,iPU].forEach(function(x){ x.addEventListener('input', refrescar); x.addEventListener('change', refrescar); });
+    [iC,iU,iP,iPU].forEach(function(x){
+      x.addEventListener('input', refrescar); x.addEventListener('change', refrescar);
+    });
     refrescar();
 
     fila.addEventListener('click', function(ev){
@@ -1643,10 +1735,23 @@ function costeoIngredientes(){
     });
     form.querySelector('[data-cancel]').addEventListener('click', function(){ form.style.display='none'; });
     form.querySelector('[data-save]').addEventListener('click', function(){
+      var nombre=(iNom.value||'').trim();
+      if(!nombre){ msg.textContent='El nombre no puede quedar vacío.'; return; }
+      i.n=nombre;
       i.compra={c:num(iC.value), u:iU.value, p:num(iP.value)};
-      if(iU.value==='u') i.pesoU=num(iPU.value);
+      if(iU.value==='u') i.pesoU=num(iPU.value); else delete i.pesoU;
       i.fecha=hoyISO();
-      guardarRecetas(); aplicarCosteoRecetas(); render('costeo');
+      guardarYRefrescar();
+    });
+    form.querySelector('[data-del]').addEventListener('click', function(){
+      var uso=recetasQueUsan(k);
+      if(uso.length){
+        msg.textContent='No se puede eliminar: lo usan '+uso.join(', ')+'. Quítalo de esas recetas primero.';
+        return;
+      }
+      if(!confirm('¿Eliminar '+i.n+'?')) return;
+      delete INGREDIENTES[k];
+      guardarYRefrescar();
     });
     card.appendChild(fila);
   });
@@ -1656,6 +1761,36 @@ function costeoIngredientes(){
 /* ---------- RECETAS ---------- */
 function costeoRecetas(){
   var keys=Object.keys(RECETAS);
+
+  /* alta */
+  var ingKeys=ingredientesOrdenados();
+  var nueva=el('<div class="card"><h2>Nueva receta</h2>'
+    +'<label class="f">Nombre</label><input class="f" data-n placeholder="ej. Relleno de Spanakopitakia">'
+    +'<label class="f">Ingrediente base</label><select class="f" data-base>'
+      +ingKeys.map(function(ik){ return '<option value="'+ik+'">'+esc(INGREDIENTES[ik].n)+'</option>'; }).join('')
+    +'</select>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">'
+    +'<div><label class="f">Gramos del lote</label><input class="f" type="number" step="any" data-bg placeholder="1000"></div>'
+    +'<div><label class="f">Rendimiento</label><input class="f" type="number" step="0.001" data-f value="1"></div>'
+    +'</div>'
+    +'<div class="muted small" style="margin:6px 0">El rendimiento es 1 si no hay pérdida; 0.588 si de 1.000 g crudos salen 588 g servidos. Los demás ingredientes se agregan después, tocando la receta.</div>'
+    +'<button class="btn primario" data-add>Crear receta</button>'
+    +'<div class="muted small" data-msg style="margin-top:6px"></div></div>');
+  nueva.querySelector('[data-add]').addEventListener('click', function(){
+    var nombre=(nueva.querySelector('[data-n]').value||'').trim();
+    var base=nueva.querySelector('[data-base]').value;
+    var bg=num(nueva.querySelector('[data-bg]').value);
+    var f=num(nueva.querySelector('[data-f]').value)||1;
+    var msg=nueva.querySelector('[data-msg]');
+    if(!nombre){ msg.textContent='Ponle un nombre.'; return; }
+    if(!bg){ msg.textContent='Dime cuántos gramos del ingrediente base lleva el lote.'; return; }
+    var k=slugKey(nombre, RECETAS, 'r_');
+    RECETAS[k]={k:k, n:nombre, base:base, baseG:bg, factor:f, lineas:[[base,1]]};
+    costeoAbierto['r'+k]=true; costeoAbierto['e'+k]=true;
+    guardarYRefrescar();
+  });
+  main.appendChild(nueva);
+
   var card=el('<div class="card"><h2>Recetas ('+keys.length+')</h2>'
     +'<div class="muted small" style="margin-bottom:8px">Cada receta se define como proporciones sobre un ingrediente base. El <b>rendimiento</b> convierte el peso crudo en peso servido (cocción, horneado).</div></div>');
 
@@ -1677,6 +1812,10 @@ function costeoRecetas(){
       var det=el('<div style="padding:6px 0 0"></div>');
       if(rc.r.nota) det.appendChild(el('<div class="banner" style="margin-bottom:6px">'+esc(rc.r.nota)+'</div>'));
       if(rc.r.alerta) det.appendChild(el('<div class="aviso" style="margin-bottom:6px">'+esc(rc.r.alerta)+'</div>'));
+
+      if(!rc.lineas.length){
+        det.appendChild(el('<div class="muted small">Todavía no tiene ingredientes. Ábrela con “Editar receta”.</div>'));
+      }
       rc.lineas.forEach(function(l){
         var pct=rc.costo? l.costo/rc.costo*100 : 0;
         det.appendChild(el('<div class="row" style="padding:3px 0">'
@@ -1689,37 +1828,144 @@ function costeoRecetas(){
       det.appendChild(el('<hr class="s"/><div class="row"><b class="small">Costo del lote</b>'
         +'<b class="money">'+fmt(rc.costo)+'</b></div>'));
 
-      var ed=el('<div style="margin-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:6px">'
-        +'<div><label class="f">Base: '+esc((INGREDIENTES[rc.r.base]||{n:rc.r.base}).n)+' (g)</label>'
-        +'<input class="f" type="number" step="any" data-bg value="'+num(rc.r.baseG)+'"></div>'
-        +'<div><label class="f">Rendimiento (1 = sin pérdida)</label>'
-        +'<input class="f" type="number" step="0.001" data-f value="'+rc.factor+'"></div></div>');
-      det.appendChild(ed);
-      var save=el('<button class="btn oliva" style="width:100%;margin-top:8px">Guardar receta</button>');
-      save.addEventListener('click', function(){
-        rc.r.baseG=num(ed.querySelector('[data-bg]').value)||rc.r.baseG;
-        rc.r.factor=num(ed.querySelector('[data-f]').value)||1;
-        guardarRecetas(); aplicarCosteoRecetas(); render('costeo');
-      });
-      det.appendChild(save);
+      var edAb=!!costeoAbierto['e'+k];
+      var btnEd=el('<button class="btn fant" style="width:100%;margin-top:6px">'+(edAb?'Cerrar edición':'Editar receta')+'</button>');
+      btnEd.addEventListener('click', function(){ costeoAbierto['e'+k]=!edAb; render('costeo'); });
+      det.appendChild(btnEd);
+      if(edAb) det.appendChild(bloqueEditarReceta(k));
       wrap.appendChild(det);
     }
     card.appendChild(wrap);
   });
   main.appendChild(card);
-  main.appendChild(el('<div class="card"><h2>Recetas por levantar</h2>'
-    +'<div class="small" style="display:grid;gap:6px">'
-    +'<div>✦ <b>Spanakopitakia</b> — comparte el filo con Tiropitakia; falta el desglose del relleno.</div>'
-    +'<div>✦ <b>Tiropitakia</b> — costo cargado a mano (13.674 por pack de 6). Falta el desglose para que se recalcule solo.</div>'
-    +'<div>✦ <b>Pastitsio, Prasopitakia, Ensalada Dakos</b> — sin receta.</div>'
-    +'<div>✦ <b>Gambas Saganaki</b> — camarón ya cargado a 38.000/kg; falta la receta.</div>'
-    +'</div></div>'));
+}
+
+/* Editor de una receta: nombre, base, rendimiento y las líneas en gramos.
+   Se escribe en gramos y la app deriva el ratio — pensar en ratios es
+   antinatural al armar una receta desde cero. */
+function bloqueEditarReceta(k){
+  var r=RECETAS[k];
+  var baseG=num(r.baseG)||1;
+  var wrap=el('<div style="margin-top:8px;padding-top:8px;border-top:1px dashed var(--linea)"></div>');
+
+  wrap.appendChild(el('<label class="f">Nombre</label>'));
+  var inN=el('<input class="f" value="'+esc(r.n)+'">'); wrap.appendChild(inN);
+
+  var grid=el('<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>');
+  grid.appendChild(el('<div><label class="f">Ingrediente base</label></div>'));
+  grid.appendChild(el('<div><label class="f">Rendimiento</label></div>'));
+  wrap.appendChild(grid);
+  var fila2=el('<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px"></div>');
+  var selBase=el('<select class="f"></select>');
+  (r.lineas||[]).forEach(function(l){
+    var i=INGREDIENTES[l[0]]; if(!i) return;
+    selBase.appendChild(el('<option value="'+l[0]+'"'+(l[0]===r.base?' selected':'')+'>'+esc(i.n)+'</option>'));
+  });
+  var inF=el('<input class="f" type="number" step="0.001" value="'+(num(r.factor)||1)+'">');
+  fila2.appendChild(selBase); fila2.appendChild(inF);
+  wrap.appendChild(fila2);
+
+  wrap.appendChild(el('<label class="f">Ingredientes del lote (gramos)</label>'));
+  var lista=el('<div></div>');
+  var origen=[];
+  (r.lineas||[]).forEach(function(l, idx){
+    var i=INGREDIENTES[l[0]];
+    var gr=nEdit(baseG*num(l[1]));
+    origen.push(gr);
+    var fila=el('<div style="display:flex;align-items:center;gap:6px;padding:3px 0"></div>');
+    fila.appendChild(el('<div class="small" style="flex:1;min-width:0">'+esc(i?i.n:l[0])
+      +(l[0]===r.base?' <span class="muted">(base)</span>':'')+'</div>'));
+    var inp=el('<input class="f" type="number" step="any" style="width:92px;font-size:14px" value="'+gr+'">');
+    inp.setAttribute('data-linea', idx);
+    fila.appendChild(inp);
+    var x=el('<button class="btn fant" style="padding:4px 7px">×</button>');
+    x.addEventListener('click', function(){
+      if(l[0]===r.base){ alert('No se puede quitar el ingrediente base. Cambia primero la base a otro ingrediente.'); return; }
+      r.lineas.splice(idx,1);
+      guardarYRefrescar();
+    });
+    fila.appendChild(x);
+    lista.appendChild(fila);
+  });
+  wrap.appendChild(lista);
+
+  /* agregar ingrediente */
+  var usados={}; (r.lineas||[]).forEach(function(l){ usados[l[0]]=true; });
+  var disp=ingredientesOrdenados().filter(function(ik){ return !usados[ik]; });
+  if(disp.length){
+    var add=el('<div style="display:flex;gap:6px;margin-top:8px"></div>');
+    var selAdd=el('<select class="f" style="flex:1">'
+      +disp.map(function(ik){ return '<option value="'+ik+'">'+esc(INGREDIENTES[ik].n)+'</option>'; }).join('')
+      +'</select>');
+    var gAdd=el('<input class="f" type="number" step="any" placeholder="g" style="width:78px">');
+    var bAdd=el('<button class="btn oliva" style="padding:9px 12px">+</button>');
+    bAdd.addEventListener('click', function(){
+      var gr=num(gAdd.value);
+      if(!gr){ alert('¿Cuántos gramos de '+INGREDIENTES[selAdd.value].n+' lleva el lote?'); return; }
+      r.lineas.push([selAdd.value, gr/(num(r.baseG)||1)]);
+      guardarYRefrescar();
+    });
+    add.appendChild(selAdd); add.appendChild(gAdd); add.appendChild(bAdd);
+    wrap.appendChild(add);
+  }
+
+  wrap.appendChild(el('<div class="muted small" style="margin-top:8px">Cambiar los gramos del ingrediente base escala todo el lote; cambiar cualquier otro cambia solo su proporción.</div>'));
+
+  var acciones=el('<div style="display:flex;gap:8px;margin-top:8px"></div>');
+  var save=el('<button class="btn oliva" style="flex:1">Guardar receta</button>');
+  save.addEventListener('click', function(){
+    var nombre=(inN.value||'').trim();
+    if(!nombre){ alert('El nombre no puede quedar vacío.'); return; }
+    r.n=nombre;
+    r.factor=num(inF.value)||1;
+
+    var inputs=lista.querySelectorAll('input[data-linea]');
+    var nuevoBaseG=num(r.baseG);
+    for(var q=0;q<inputs.length;q++){
+      var ix=parseInt(inputs[q].getAttribute('data-linea'),10);
+      if(r.lineas[ix][0]===r.base) nuevoBaseG=num(inputs[q].value)||nuevoBaseG;
+    }
+    /* solo se recalcula el ratio de las líneas que el usuario tocó; las demás
+       conservan su proporción y escalan con el lote */
+    for(var w=0;w<inputs.length;w++){
+      var iy=parseInt(inputs[w].getAttribute('data-linea'),10);
+      var val=num(inputs[w].value);
+      if(r.lineas[iy][0]===r.base){ r.lineas[iy][1]=1; continue; }
+      if(Math.abs(val-origen[iy])>0.0005) r.lineas[iy][1]=val/nuevoBaseG;
+    }
+    r.baseG=nuevoBaseG;
+
+    var nuevaBase=selBase.value;
+    if(nuevaBase!==r.base){
+      /* mantener los gramos absolutos y recalcular todo contra la nueva base */
+      var gramos={};
+      r.lineas.forEach(function(l){ gramos[l[0]]=nuevoBaseG*num(l[1]); });
+      var gb=gramos[nuevaBase]||0;
+      if(!gb){ alert('Esa base no tiene gramos asignados.'); return; }
+      r.base=nuevaBase; r.baseG=gb;
+      r.lineas.forEach(function(l){ l[1]=gramos[l[0]]/gb; });
+    }
+    guardarYRefrescar();
+  });
+  var del=el('<button class="btn fant">Eliminar</button>');
+  del.addEventListener('click', function(){
+    var uso=productosQueUsan(k);
+    if(uso.length){ alert('No se puede eliminar: la usan '+uso.join(', ')+'. Quítala de esos productos primero.'); return; }
+    if(!confirm('¿Eliminar la receta '+r.n+'?')) return;
+    delete RECETAS[k];
+    guardarYRefrescar();
+  });
+  acciones.appendChild(save); acciones.appendChild(del);
+  wrap.appendChild(acciones);
+  return wrap;
 }
 
 /* ---------- PRODUCTOS ---------- */
 function costeoProductos(){
   var card=el('<div class="card"><h2>Productos armados</h2>'
     +'<div class="muted small" style="margin-bottom:8px">Cada producto se arma con porciones de receta. Cada porción se mide en <b>gramos del ingrediente base</b> (150 g de carne) o en <b>gramos ya preparados</b> (90 g de pan) — el selector de al lado lo define.</div></div>');
+
+  var sinArmar=PRODUCTOS.filter(function(p){ return !ENSAMBLES[p.key]; });
 
   PRODUCTOS.forEach(function(p){
     var c=productoCalc(p.key); if(!c) return;
@@ -1761,7 +2007,15 @@ function costeoProductos(){
         +fmt(c.margen)+' ('+c.margenPct.toFixed(0)+'%)</b></div>'));
 
       /* editar porciones */
-      if(!c.fijo){
+      if(c.fijo){
+        var conv=el('<button class="btn fant" style="width:100%;margin-top:8px">Costear por receta en vez de a mano</button>');
+        conv.addEventListener('click', function(){
+          if(!confirm('Se borra el costo cargado a mano ('+fmt(c.e.costoFijo)+') y el producto pasa a costearse con recetas. ¿Seguir?')) return;
+          delete c.e.costoFijo; c.e.comp=[];
+          guardarYRefrescar();
+        });
+        det.appendChild(conv);
+      } else {
         var eds=el('<div style="margin-top:8px"></div>');
         (c.e.comp||[]).forEach(function(comp, idx){
           var r=RECETAS[comp[0]];
@@ -1775,9 +2029,36 @@ function costeoProductos(){
             +'<option value="base"'+(modo==='base'?' selected':'')+'>g de '+esc(baseN)+'</option>'
             +'<option value="servido"'+(modo!=='base'?' selected':'')+'>g ya preparados</option></select>');
           sel.setAttribute('data-modo', idx);
-          fila.appendChild(inp); fila.appendChild(sel);
+          var quitar=el('<button class="btn fant" style="padding:4px 7px">×</button>');
+          quitar.addEventListener('click', function(){
+            c.e.comp.splice(idx,1);
+            guardarYRefrescar();
+          });
+          fila.appendChild(inp); fila.appendChild(sel); fila.appendChild(quitar);
           eds.appendChild(fila);
         });
+
+        /* agregar componente */
+        var usadas={}; (c.e.comp||[]).forEach(function(x){ usadas[x[0]]=true; });
+        var libres=Object.keys(RECETAS).filter(function(rk){ return !usadas[rk]; });
+        if(libres.length){
+          eds.appendChild(el('<label class="f">Agregar receta</label>'));
+          var addRow=el('<div style="display:flex;gap:6px"></div>');
+          var selR=el('<select class="f" style="flex:1">'
+            +libres.map(function(rk){ return '<option value="'+rk+'">'+esc(RECETAS[rk].n)+'</option>'; }).join('')
+            +'</select>');
+          var gR=el('<input class="f" type="number" step="any" placeholder="g" style="width:78px">');
+          var bR=el('<button class="btn oliva" style="padding:9px 12px">+</button>');
+          bR.addEventListener('click', function(){
+            var gr=num(gR.value);
+            if(!gr){ alert('¿Cuántos gramos de '+RECETAS[selR.value].n+' lleva el producto?'); return; }
+            if(!c.e.comp) c.e.comp=[];
+            c.e.comp.push([selR.value, gr, 'servido']);
+            guardarYRefrescar();
+          });
+          addRow.appendChild(selR); addRow.appendChild(gR); addRow.appendChild(bR);
+          eds.appendChild(addRow);
+        }
         det.appendChild(eds);
       }
       var extra=el('<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px">'
@@ -1788,7 +2069,7 @@ function costeoProductos(){
 
       var save=el('<button class="btn oliva" style="width:100%;margin-top:8px">Guardar producto</button>');
       save.addEventListener('click', function(){
-        if(!c.fijo){
+        if(!c.fijo && c.e.comp){
           var inputs=det.querySelectorAll('input[data-idx]');
           for(var q=0;q<inputs.length;q++){
             var ix=parseInt(inputs[q].getAttribute('data-idx'),10);
@@ -1811,6 +2092,25 @@ function costeoProductos(){
     card.appendChild(wrap);
   });
   main.appendChild(card);
+
+  if(sinArmar.length){
+    var cs=el('<div class="card"><h2>Sin costear ('+sinArmar.length+')</h2>'
+      +'<div class="muted small" style="margin-bottom:8px">Estos productos todavía no se arman con recetas. Crea el costeo y luego agrégales las recetas que lleven.</div></div>');
+    sinArmar.forEach(function(p){
+      var fila=el('<div class="item-row">'
+        +'<div style="flex:1;min-width:0"><div style="font-weight:700">'+esc(p.nombre)+'</div>'
+        +'<div class="muted small">'+fmt(p.precio)+' · '+esc(p.unidad)+'</div></div></div>');
+      var b=el('<button class="btn fant" style="padding:4px 8px;font-size:11px">Crear costeo</button>');
+      b.addEventListener('click', function(){
+        ENSAMBLES[p.key]={comp:[]};
+        costeoAbierto['p'+p.key]=true;
+        guardarYRefrescar();
+      });
+      fila.appendChild(b);
+      cs.appendChild(fila);
+    });
+    main.appendChild(cs);
+  }
 }
 
 /* ---------- LISTA DE COMPRAS ---------- */
