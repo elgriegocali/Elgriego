@@ -1815,6 +1815,9 @@ function costeoProductos(){
 
 /* ---------- LISTA DE COMPRAS ---------- */
 var comprasSel={};
+var comprasMan={};                 /* cantidades manuales, sobreviven al re-render */
+var comprasModo='producto';        /* 'producto' | 'insumo' */
+
 function costeoCompras(){
   var activos=pedidos.filter(function(p){
     return p.estado!=='Entregado' && p.estado!=='Cancelado';
@@ -1841,55 +1844,114 @@ function costeoCompras(){
   /* cantidades manuales */
   var man=el('<div class="card"><h2>Agregar a mano</h2>'
     +'<div class="muted small" style="margin-bottom:6px">Para producción sin pedido — por ejemplo un lote para congelar.</div></div>');
-  var manQty={};
   PRODUCTOS.forEach(function(p){
     if(!ENSAMBLES[p.key] || ENSAMBLES[p.key].costoFijo!=null) return;
+    if(comprasMan[p.key]==null) comprasMan[p.key]=0;
     var row=el('<div class="item-row"><div style="flex:1"><div class="small">'+esc(p.nombre)+'</div></div>'
-      +'<div class="qty"><button data-m>−</button><span>0</span><button data-p>+</button></div></div>');
+      +'<div class="qty"><button data-m>−</button><span>'+comprasMan[p.key]+'</span><button data-p>+</button></div></div>');
     var span=row.querySelector('span');
-    manQty[p.key]=0;
     row.querySelector('[data-m]').addEventListener('click', function(){
-      if(manQty[p.key]>0){ manQty[p.key]--; span.textContent=manQty[p.key]; recalc(); }
+      if(comprasMan[p.key]>0){ comprasMan[p.key]--; span.textContent=comprasMan[p.key]; recalc(); }
     });
     row.querySelector('[data-p]').addEventListener('click', function(){
-      manQty[p.key]++; span.textContent=manQty[p.key]; recalc();
+      comprasMan[p.key]++; span.textContent=comprasMan[p.key]; recalc();
     });
     man.appendChild(row);
   });
   main.appendChild(man);
 
-  var out=el('<div class="card"><h2>Ingredientes a comprar</h2><div id="lc-body"></div></div>');
+  var out=el('<div class="card"><h2>Ingredientes a comprar</h2></div>');
+  var toggle=el('<div class="pills" style="margin:0 0 4px"></div>');
+  [['producto','Por producto'],['insumo','Por insumo']].forEach(function(v){
+    var b=el('<button class="pill'+(comprasModo===v[0]?' on':'')+'">'+v[1]+'</button>');
+    b.addEventListener('click', function(){ comprasModo=v[0]; recalc(); render('costeo'); });
+    toggle.appendChild(b);
+  });
+  out.appendChild(toggle);
+  out.appendChild(el('<div class="muted small" style="margin-bottom:6px">'
+    +(comprasModo==='producto'
+      ? 'Cuánto insumo se va en cada plato — para la mise en place.'
+      : 'Todo sumado por ingrediente — para ir al mercado.')+'</div>'));
+  out.appendChild(el('<div id="lc-body"></div>'));
   main.appendChild(out);
 
-  function recalc(){
-    var total={};
+  /* unidades por producto: pedidos marcados + cantidades manuales */
+  function cantidades(){
+    var cant={};
     activos.forEach(function(p){
       if(comprasSel[p.id]===false) return;
       (p.items||[]).forEach(function(it){
-        var sub=ingredientesDe(it.key, it.qty||0);
-        for(var k in sub) total[k]=(total[k]||0)+sub[k];
+        if(!prod(it.key)) return;
+        cant[it.key]=(cant[it.key]||0)+(it.qty||0);
       });
     });
-    for(var pk in manQty){
-      if(!manQty[pk]) continue;
-      var sub2=ingredientesDe(pk, manQty[pk]);
-      for(var k2 in sub2) total[k2]=(total[k2]||0)+sub2[k2];
-    }
+    for(var pk in comprasMan){ if(comprasMan[pk]>0) cant[pk]=(cant[pk]||0)+comprasMan[pk]; }
+    return cant;
+  }
+  function costoDe(mapa){
+    var s=0; for(var k in mapa) s+=mapa[k]*copG(INGREDIENTES[k]);
+    return s;
+  }
+  function filasIng(mapa, contenedor){
+    Object.keys(mapa).filter(function(k){ return mapa[k]>0.005; })
+      .sort(function(a,b){ return mapa[b]*copG(INGREDIENTES[b])-mapa[a]*copG(INGREDIENTES[a]); })
+      .forEach(function(k){
+        var i=INGREDIENTES[k];
+        contenedor.appendChild(el('<div class="row" style="padding:3px 0">'
+          +'<div class="small" style="flex:1">'+esc(i.n)+'</div>'
+          +'<div style="text-align:right"><div class="small money">'+g(mapa[k])+'</div>'
+          +'<div class="muted small">'+fmt(mapa[k]*copG(i))+'</div></div></div>'));
+      });
+  }
+  function total(txt, valor){
+    return el('<div class="row" style="margin-top:8px;padding-top:6px;border-top:1px solid var(--linea)">'
+      +'<b class="small">'+txt+'</b><b class="money">'+fmt(valor)+'</b></div>');
+  }
+
+  function recalc(){
+    var cant=cantidades();
     var body=out.querySelector('#lc-body');
     body.innerHTML='';
-    var keys=Object.keys(total).filter(function(k){ return total[k]>0.005; })
-      .sort(function(a,b){ return total[b]*copG(INGREDIENTES[b])-total[a]*copG(INGREDIENTES[a]); });
-    if(!keys.length){ body.appendChild(el('<div class="muted small">Nada seleccionado todavía.</div>')); return; }
-    var suma=0;
-    keys.forEach(function(k){
-      var i=INGREDIENTES[k], costo=total[k]*copG(i); suma+=costo;
-      body.appendChild(el('<div class="row" style="padding:4px 0;border-bottom:1px dashed var(--linea)">'
-        +'<div class="small" style="flex:1">'+esc(i.n)+'</div>'
-        +'<div style="text-align:right"><div class="small money">'+g(total[k])+'</div>'
-        +'<div class="muted small">'+fmt(costo)+'</div></div></div>'));
-    });
-    body.appendChild(el('<div class="row" style="margin-top:6px"><b class="small">Total insumos</b>'
-      +'<b class="money">'+fmt(suma)+'</b></div>'));
+    var pks=Object.keys(cant).filter(function(k){ return cant[k]>0; });
+    if(!pks.length){
+      body.appendChild(el('<div class="muted small">Nada seleccionado todavía.</div>'));
+      return;
+    }
+
+    if(comprasModo==='producto'){
+      var suma=0, sinReceta=0;
+      pks.map(function(pk){
+        var mapa=ingredientesDe(pk, cant[pk]);
+        return {pk:pk, qty:cant[pk], mapa:mapa, costo:costoDe(mapa)};
+      })
+      .sort(function(a,b){ return b.costo-a.costo; })
+      .forEach(function(x){
+        suma+=x.costo;
+        var bloque=el('<div style="padding:8px 0;border-bottom:1px dashed var(--linea)"></div>');
+        bloque.appendChild(el('<div class="row"><b class="small">'+esc(prod(x.pk).nombre)+' × '+x.qty+'</b>'
+          +'<b class="money">'+fmt(x.costo)+'</b></div>'));
+        if(!Object.keys(x.mapa).length){
+          sinReceta++;
+          bloque.appendChild(el('<div class="muted small">Sin receta cargada — no se puede desglosar.</div>'));
+        } else {
+          var det=el('<div style="margin-top:4px;padding-left:10px;border-left:2px solid var(--linea)"></div>');
+          filasIng(x.mapa, det);
+          bloque.appendChild(det);
+        }
+        body.appendChild(bloque);
+      });
+      body.appendChild(total('Total insumos', suma));
+      if(sinReceta) body.appendChild(el('<div class="aviso" style="margin-top:6px">'+sinReceta
+        +' producto(s) sin receta no entran en el total.</div>'));
+    } else {
+      var acum={};
+      pks.forEach(function(pk){
+        var sub=ingredientesDe(pk, cant[pk]);
+        for(var k in sub) acum[k]=(acum[k]||0)+sub[k];
+      });
+      filasIng(acum, body);
+      body.appendChild(total('Total insumos', costoDe(acum)));
+    }
   }
   recalc();
 }
