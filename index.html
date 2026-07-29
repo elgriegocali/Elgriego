@@ -1177,66 +1177,68 @@ function renderClientes(){
    El food cost % se calcula solo con ingredientes + merma (comparable con la meta
    de 20%). Empaque, gas y mano de obra entran en "costo total" y "margen real". */
 
-var ING_BASE=[
- ['yogurt','Yogurt griego',26.5],['pepino','Pepino',3],['ajo','Ajo',26],
- ['pim_blanca','Pimienta blanca',34],['sal','Sal',8.2],['eneldo','Eneldo',52],
- ['aceite_oliva','Aceite de oliva',36.6],['harina','Harina',3.9],['agua','Agua',1.9],
- ['leche','Leche',5.3],['leche_polvo','Leche en polvo',25],['levadura','Levadura',61],
- ['azucar','Azúcar',8.2],['aceite_mezcla','Aceite mezcla',22],['pernil','Brazo de cerdo',19],
- ['vin_tinto','Vinagre de vino tinto',16],['tomillo','Tomillo',60],['pim_negra','Pimienta negra',53],
- ['cebolla','Cebolla',5],['oregano','Orégano',60],['miel','Miel',34],['bondiola','Bondiola',22.5],
- ['comino','Comino',9],['pim_dulce','Pimienta dulce',8],['vin_blanco','Vinagre de vino blanco',26],
- ['limon','Jugo de limón',12],['pollo','Pollo',21],['cilantro_m','Cilantro molido',50],
- ['paprika','Paprika ahumada',43],['cayena','Cayena',40],['pan_rallado','Pan rallado',12],
- ['perejil','Perejil',20],['carne_molida','Carne molida de res',26],['pasta_tomate','Pasta de tomate',20],
- ['tomate_lata','Tomate en lata',26],['mantequilla','Mantequilla',24],['parmesano','Parmesano',79],
- ['berenjena','Berenjena',5],['tomate','Tomate',7],['feta','Queso feta',65],
- ['cebolla_roja','Cebolla roja',5],['vino_tinto','Vino tinto seco',30]
-];
-
 function ingredientesBase(){
-  var o={};
-  ING_BASE.forEach(function(a){
-    o[a[0]]={k:a[0], n:a[1], compra:{c:1000,u:'g',p:Math.round(a[2]*1000)}, fecha:''};
-  });
-  /* compras reales confirmadas */
-  o.huevo   ={k:'huevo',   n:'Huevos',  compra:{c:30,u:'u',p:21000}, pesoU:50, fecha:'2026-07-28'};
-  o.camaron ={k:'camaron', n:'Camarón', compra:{c:1000,u:'g',p:38000}, fecha:'2026-07-28'};
-  return o;
+  return {
+   yogurt:{k:'yogurt',n:'Yogurt griego',compra:{c:1000,u:'g',p:26500},fecha:''},
+   pepino:{k:'pepino',n:'Pepino',compra:{c:1000,u:'g',p:3000},fecha:''},
+   ajo:{k:'ajo',n:'Ajo',compra:{c:1000,u:'g',p:26000},fecha:''},
+   pim_blanca:{k:'pim_blanca',n:'Pimienta blanca',compra:{c:1000,u:'g',p:34000},fecha:''},
+   sal:{k:'sal',n:'Sal',compra:{c:1000,u:'g',p:8200},fecha:''},
+   eneldo:{k:'eneldo',n:'Eneldo',compra:{c:1000,u:'g',p:52000},fecha:''},
+   aceite_oliva:{k:'aceite_oliva',n:'Aceite de oliva',compra:{c:1000,u:'g',p:36600},fecha:''},
+   harina:{k:'harina',n:'Harina',compra:{c:1000,u:'g',p:3900},fecha:''},
+   agua:{k:'agua',n:'Agua',compra:{c:1000,u:'g',p:1900},fecha:''},
+   leche:{k:'leche',n:'Leche',compra:{c:1000,u:'g',p:5300},fecha:''},
+   leche_polvo:{k:'leche_polvo',n:'Leche en polvo',compra:{c:1000,u:'g',p:25000},fecha:''},
+   levadura:{k:'levadura',n:'Levadura',compra:{c:1000,u:'g',p:61000},fecha:''},
+   azucar:{k:'azucar',n:'Azúcar',compra:{c:1000,u:'g',p:8200},fecha:''},
+   aceite_mezcla:{k:'aceite_mezcla',n:'Aceite mezcla',compra:{c:1000,u:'g',p:22000},fecha:''},
+   pernil:{k:'pernil',n:'Brazo de cerdo',compra:{c:1000,u:'g',p:19000},fecha:''},
+   vin_tinto:{k:'vin_tinto',n:'Vinagre de vino tinto',compra:{c:1000,u:'g',p:16000},fecha:''},
+   tomillo:{k:'tomillo',n:'Tomillo',compra:{c:1000,u:'g',p:60000},fecha:''},
+   pim_negra:{k:'pim_negra',n:'Pimienta negra',compra:{c:1000,u:'g',p:53000},fecha:''},
+   cebolla:{k:'cebolla',n:'Cebolla',compra:{c:1000,u:'g',p:5000},fecha:''},
+   oregano:{k:'oregano',n:'Orégano',compra:{c:1000,u:'g',p:60000},fecha:''},
+   miel:{k:'miel',n:'Miel',compra:{c:1000,u:'g',p:34000},fecha:''},
+   bondiola:{k:'bondiola',n:'Bondiola',compra:{c:1000,u:'g',p:22500},fecha:''},
+   comino:{k:'comino',n:'Comino',compra:{c:1000,u:'g',p:9000},fecha:''},
+   pim_dulce:{k:'pim_dulce',n:'Pimienta dulce',compra:{c:1000,u:'g',p:8000},fecha:''},
+   vin_blanco:{k:'vin_blanco',n:'Vinagre de vino blanco',compra:{c:1000,u:'g',p:26000},fecha:''},
+   limon:{k:'limon',n:'Jugo de limón',compra:{c:1000,u:'g',p:12000},fecha:''},
+   pollo:{k:'pollo',n:'Pollo',compra:{c:1000,u:'g',p:21000},fecha:''},
+   cilantro_m:{k:'cilantro_m',n:'Cilantro molido',compra:{c:1000,u:'g',p:50000},fecha:''},
+   paprika:{k:'paprika',n:'Paprika ahumada',compra:{c:1000,u:'g',p:43000},fecha:''},
+   cayena:{k:'cayena',n:'Cayena',compra:{c:1000,u:'g',p:40000},fecha:''},
+   pan_rallado:{k:'pan_rallado',n:'Pan rallado',compra:{c:1000,u:'g',p:12000},fecha:''},
+   perejil:{k:'perejil',n:'Perejil',compra:{c:1000,u:'g',p:20000},fecha:''},
+   carne_molida:{k:'carne_molida',n:'Carne molida de res',compra:{c:1000,u:'g',p:26000},fecha:''},
+   pasta_tomate:{k:'pasta_tomate',n:'Pasta de tomate',compra:{c:1000,u:'g',p:20000},fecha:''},
+   tomate_lata:{k:'tomate_lata',n:'Tomate en lata',compra:{c:1000,u:'g',p:26000},fecha:''},
+   mantequilla:{k:'mantequilla',n:'Mantequilla',compra:{c:1000,u:'g',p:24000},fecha:''},
+   parmesano:{k:'parmesano',n:'Parmesano',compra:{c:1000,u:'g',p:79000},fecha:''},
+   berenjena:{k:'berenjena',n:'Berenjena',compra:{c:1000,u:'g',p:5000},fecha:''},
+   tomate:{k:'tomate',n:'Tomate',compra:{c:1000,u:'g',p:7000},fecha:''},
+   feta:{k:'feta',n:'Queso feta',compra:{c:1000,u:'g',p:65000},fecha:''},
+   cebolla_roja:{k:'cebolla_roja',n:'Cebolla roja',compra:{c:1000,u:'g',p:5000},fecha:''},
+   vino_tinto:{k:'vino_tinto',n:'Vino tinto seco',compra:{c:1000,u:'g',p:30000},fecha:''},
+   huevo:{k:'huevo',n:'Huevos',compra:{c:30,u:'u',p:21000},pesoU:50,fecha:'2026-07-28'},
+   camaron:{k:'camaron',n:'Camarón',compra:{c:1000,u:'g',p:38000},fecha:'2026-07-28'},
+   espinaca:{k:'espinaca',n:'Espinaca',compra:{c:1000,u:'g',p:24000},fecha:'2026-07-29'},
+   puerro:{k:'puerro',n:'Puerro',compra:{c:123,u:'g',p:11},fecha:'2026-07-29'}
+  };
 }
 
 function recetasBase(){
   return {
-   r_tzatziki:{k:'r_tzatziki',n:'Tzatziki',base:'yogurt',baseG:600,factor:1,lineas:[
-     ['yogurt',1],['pepino',0.4857142857],['ajo',0.0142857143],['pim_blanca',0.006],
-     ['sal',0.0173],['eneldo',0.01],['vin_blanco',0.021],['aceite_oliva',0.06]]},
-   r_pita:{k:'r_pita',n:'Pan Pita',base:'harina',baseG:1000,factor:0.849,
-     nota:'1.802 g de masa → 1.530 g horneados = 17 panes de 90 g (pérdida 15,1%).',lineas:[
-     ['harina',1],['agua',0.16],['leche',0.55],['leche_polvo',0.025],['levadura',0.004],
-     ['azucar',0.015],['aceite_mezcla',0.025],['sal',0.023]]},
-   r_cerdo:{k:'r_cerdo',n:'Gyros de cerdo (carne)',base:'pernil',baseG:1500,factor:1,
-     nota:'Porción de 150 g de carne cruda adobada.',lineas:[
-     ['pernil',1],['aceite_oliva',0.05],['vin_tinto',0.025],['sal',0.01],['tomillo',0.005],
-     ['pim_negra',0.007],['miel',0.01],['ajo',0.01],['cebolla',0.17],['oregano',0.005]]},
-   r_bondiola:{k:'r_bondiola',n:'Gyros de bondiola (carne)',base:'bondiola',baseG:1500,factor:1,lineas:[
-     ['bondiola',1],['aceite_oliva',0.045],['vin_blanco',0.04],['sal',0.01],['tomillo',0.002],
-     ['pim_negra',0.00235],['pim_dulce',0.00235],['ajo',0.005],['comino',0.002],['oregano',0.002]]},
-   r_pollo:{k:'r_pollo',n:'Gyros de pollo (carne)',base:'pollo',baseG:1500,factor:1,lineas:[
-     ['pollo',1],['aceite_oliva',0.06],['limon',0.08],['ajo',0.005],['oregano',0.006],
-     ['sal',0.012],['pim_negra',0.0023],['miel',0.015]]},
-   r_kebab:{k:'r_kebab',n:'Kebab Thanasis (carne)',base:'carne_molida',baseG:1000,factor:1,lineas:[
-     ['carne_molida',1],['cebolla',0.15],['sal',0.01],['perejil',0.03],['comino',0.01],
-     ['pim_negra',0.004],['aceite_oliva',0.036],['ajo',0.01],['cilantro_m',0.003],
-     ['paprika',0.005],['cayena',0.002],['pan_rallado',0.06],['agua',0.04]]},
-   r_mousaka:{k:'r_mousaka',n:'Mousaka',base:'carne_molida',baseG:108,factor:0.588,
-     nota:'Pérdida por cocción 41,15%: 5.948 g crudo → 3.500 g cocido. Incluye bechamel y berenjena.',lineas:[
-     ['carne_molida',1],['cebolla',0.4],['aceite_oliva',0.075],['ajo',0.008],['pasta_tomate',0.057],
-     ['tomate_lata',0.4],['vino_tinto',0.11],['sal',0.015],['pim_negra',0.004],['leche',1],
-     ['mantequilla',0.1],['harina',0.1],['parmesano',0.05],['huevo',0.04],['berenjena',2.45]]},
-   r_ens_griega:{k:'r_ens_griega',n:'Ensalada Griega',base:'tomate',baseG:100,factor:1,
-     alerta:'Revisar ratios: 3 g de feta y 5 g de pepino para una porción de 250 g parece un error de coma decimal (¿0,30 y 0,51?).',lineas:[
-     ['tomate',1],['pepino',0.051],['cebolla_roja',0.028],['feta',0.03],['pim_blanca',0.002],
-     ['sal',0.004],['aceite_oliva',0.03],['oregano',0.005]]}
+   r_tzatziki:{k:'r_tzatziki',n:'Tzatziki',base:'yogurt',baseG:600,factor:1,lineas:[['yogurt',1],['pepino',0.4857142857],['ajo',0.0142857143],['pim_blanca',0.006],['sal',0.0173],['eneldo',0.01],['vin_blanco',0.021],['aceite_oliva',0.06]]},
+   r_pita:{k:'r_pita',n:'Pan Pita',base:'harina',baseG:1000,factor:0.849,nota:'1.802 g de masa → 1.530 g horneados = 17 panes de 90 g (pérdida 15,1%).',lineas:[['harina',1],['agua',0.16],['leche',0.55],['leche_polvo',0.025],['levadura',0.004],['azucar',0.015],['aceite_mezcla',0.025],['sal',0.023]]},
+   r_cerdo:{k:'r_cerdo',n:'Gyros de cerdo (carne)',base:'pernil',baseG:1000,factor:1,nota:'Porción de 150 g de carne cruda adobada.',lineas:[['pernil',1],['aceite_oliva',0.05],['vin_tinto',0.025],['sal',0.01],['tomillo',0.005],['pim_negra',0.007],['miel',0.01],['ajo',0.01],['cebolla',0.17],['oregano',0.005]]},
+   r_bondiola:{k:'r_bondiola',n:'Gyros de bondiola (carne)',base:'bondiola',baseG:1500,factor:1,lineas:[['bondiola',1],['aceite_oliva',0.045],['vin_blanco',0.04],['sal',0.01],['tomillo',0.002],['pim_negra',0.00235],['pim_dulce',0.00235],['ajo',0.005],['comino',0.002],['oregano',0.002]]},
+   r_pollo:{k:'r_pollo',n:'Gyros de pollo (carne)',base:'pollo',baseG:1500,factor:1,lineas:[['pollo',1],['aceite_oliva',0.06],['limon',0.08],['ajo',0.005],['oregano',0.006],['sal',0.012],['pim_negra',0.0023],['miel',0.015]]},
+   r_kebab:{k:'r_kebab',n:'Kebab Thanasis (carne)',base:'carne_molida',baseG:1000,factor:1,lineas:[['carne_molida',1],['cebolla',0.15],['sal',0.01],['perejil',0.03],['comino',0.01],['pim_negra',0.004],['aceite_oliva',0.036],['ajo',0.01],['cilantro_m',0.003],['paprika',0.005],['cayena',0.002],['pan_rallado',0.06],['agua',0.04]]},
+   r_mousaka:{k:'r_mousaka',n:'Mousaka',base:'carne_molida',baseG:123,factor:0.588,nota:'Pérdida por cocción 41,15%: 5.948 g crudo → 3.500 g cocido. Incluye bechamel y berenjena.',lineas:[['carne_molida',1],['cebolla',0.3252032520325203],['aceite_oliva',0.075],['ajo',0.008],['pasta_tomate',0.057],['tomate_lata',0.4],['vino_tinto',0.11],['sal',0.015],['pim_negra',0.004],['leche',1],['mantequilla',0.1],['harina',0.1],['parmesano',0.05],['huevo',0.04],['berenjena',2.4471544715447155]]},
+   r_ens_griega:{k:'r_ens_griega',n:'Ensalada Griega',base:'tomate',baseG:100,factor:1,alerta:'Revisar ratios: 3 g de feta y 5 g de pepino para una porción de 250 g parece un error de coma decimal (¿0,30 y 0,51?).',lineas:[['tomate',1],['pepino',0.051],['cebolla_roja',0.028],['feta',0.03],['pim_blanca',0.002],['sal',0.004],['aceite_oliva',0.03],['oregano',0.005]]},
+   r_spanakopitakia:{k:'r_spanakopitakia',n:'Spanakopitakia',base:'espinaca',baseG:83,factor:0.5,lineas:[['espinaca',1],['puerro',2.44],['feta',0.36],['aceite_oliva',0.0741869918699187],['cebolla_roja',0.7951807228915663]]}
   };
 }
 
@@ -1248,10 +1250,11 @@ function ensamblesBase(){
    kebab:{comp:[['r_kebab',150],['r_pita',90],['r_tzatziki',55]]},
    pita:{comp:[['r_pita',450]]},
    tzatziki:{comp:[['r_tzatziki',200]]},
-   mousaka:{comp:[['r_mousaka',280]],
-     alerta:'El menú dice 280 g pero el Excel costeaba 350 g. A 350 g el food cost sube a 25,0%. Confirmar la porción real.'},
+   mousaka:{comp:[['r_mousaka',350,'servido']],alerta:'El menú dice 280 g pero el Excel costeaba 350 g. A 350 g el food cost sube a 25,0%. Confirmar la porción real.',empaque:0,gas:0,labor:0},
    ens_griega:{comp:[['r_ens_griega',250]]},
-   tiro:{costoFijo:13674, nota:'2 láminas de filo por 4 pies. Costo cargado a mano — falta el desglose de ingredientes.'}
+   tiro:{costoFijo:13674,nota:'2 láminas de filo por 4 pies. Costo cargado a mano — falta el desglose de ingredientes.'},
+   spanako:{comp:[['r_spanakopitakia',180,'servido']],empaque:0,gas:0,labor:0},
+   pastitsio:{comp:[]}
   };
 }
 
@@ -1397,7 +1400,8 @@ function productoCalc(pk){
   var gas=(e.gas!=null?num(e.gas):num(CFG.gas));
   var lab=(e.labor!=null?num(e.labor):num(CFG.labor));
   var total=ingT+emp+gas+lab;
-  return {p:p, e:e, det:det, fijo:fijo, ing:ing, merma:merma, ingT:ingT,
+  return {p:p, e:e, det:det, fijo:fijo, vacio:(!fijo && !det.length),
+          ing:ing, merma:merma, ingT:ingT,
           empaque:emp, gas:gas, labor:lab, total:total,
           fc: p.precio ? ingT/p.precio*100 : 0,
           margen: p.precio-total,
@@ -1411,7 +1415,7 @@ function aplicarCosteoRecetas(){
   PRODUCTOS.forEach(function(p){
     if(p.fcManual===undefined) p.fcManual=(p.fc==null?null:p.fc);
     var c=productoCalc(p.key);
-    if(c){ p.fc=Math.round(c.fc*10)/10; p.fcSrc='receta'; }
+    if(c && !c.vacio){ p.fc=Math.round(c.fc*10)/10; p.fcSrc='receta'; }
     else { p.fc=p.fcManual; p.fcSrc=null; }
   });
 }
@@ -1504,7 +1508,7 @@ function costeoResumen(){
   var calcs=[], sinReceta=[];
   PRODUCTOS.forEach(function(p){
     var c=productoCalc(p.key);
-    if(c) calcs.push(c); else sinReceta.push(p);
+    if(c && !c.vacio) calcs.push(c); else sinReceta.push(p);
   });
   var sobreMeta=calcs.filter(function(c){ return c.fc>num(CFG.meta); });
 
@@ -1974,9 +1978,12 @@ function costeoProductos(){
     var top=el('<div class="row" style="cursor:pointer">'
       +'<div style="flex:1;min-width:0"><div style="font-weight:700">'+esc(p.nombre)+' <span class="muted small">'+(ab?'▾':'▸')+'</span></div>'
       +'<div class="muted small">'+fmt(p.precio)+' · '+esc(p.unidad)+'</div>'
-      +'<div style="margin-top:3px">'+chipFC(c.fc)+'</div></div>'
-      +'<div style="text-align:right"><div class="money">'+fmt(c.total)+'</div>'
-      +'<div class="muted small">costo total</div></div></div>');
+      +'<div style="margin-top:3px">'
+      +(c.vacio ? '<span class="chip alerta">sin costear</span>' : chipFC(c.fc))+'</div></div>'
+      +'<div style="text-align:right">'
+      +(c.vacio ? '<div class="muted small">agrégale recetas</div>'
+                : '<div class="money">'+fmt(c.total)+'</div><div class="muted small">costo total</div>')
+      +'</div></div>');
     top.addEventListener('click', function(){ costeoAbierto['p'+p.key]=!ab; render('costeo'); });
     wrap.appendChild(top);
 
