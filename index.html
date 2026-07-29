@@ -1181,7 +1181,7 @@ var ING_BASE=[
  ['pim_blanca','Pimienta blanca',34],['sal','Sal',8.2],['eneldo','Eneldo',52],
  ['aceite_oliva','Aceite de oliva',36.6],['harina','Harina',3.9],['agua','Agua',1.9],
  ['leche','Leche',5.3],['leche_polvo','Leche en polvo',25],['levadura','Levadura',61],
- ['azucar','Azúcar',8.2],['aceite_mezcla','Aceite mezcla',22],['pernil','Pernil de cerdo',19],
+ ['azucar','Azúcar',8.2],['aceite_mezcla','Aceite mezcla',22],['pernil','Brazo de cerdo',19],
  ['vin_tinto','Vinagre de vino tinto',16],['tomillo','Tomillo',60],['pim_negra','Pimienta negra',53],
  ['cebolla','Cebolla',5],['oregano','Orégano',60],['miel','Miel',34],['bondiola','Bondiola',22.5],
  ['comino','Comino',9],['pim_dulce','Pimienta dulce',8],['vin_blanco','Vinagre de vino blanco',26],
@@ -1241,10 +1241,11 @@ function recetasBase(){
 
 function ensamblesBase(){
   return {
-   gyros_cerdo:{comp:[['r_cerdo',150],['r_pita',90],['r_tzatziki',55]]},
-   gyros_pollo:{comp:[['r_pollo',150],['r_pita',90],['r_tzatziki',55]]},
-   gyros_bondiola:{comp:[['r_bondiola',150],['r_pita',90],['r_tzatziki',55]]},
-   kebab:{comp:[['r_kebab',150],['r_pita',90],['r_tzatziki',55]]},
+   gyros_cerdo:{comp:[['r_cerdo',150,'base'],['r_pita',90],['r_tzatziki',55]]},
+   gyros_pollo:{comp:[['r_pollo',150,'base'],['r_pita',90],['r_tzatziki',55]]},
+   gyros_bondiola:{comp:[['r_bondiola',150,'base'],['r_pita',90],['r_tzatziki',55]]},
+   kebab:{comp:[['r_kebab',150,'base'],['r_pita',90],['r_tzatziki',55]],
+     alerta:'La porción está tomada como 150 g de carne molida sola. Si en cocina se pesan 150 g de la mezcla ya armada (con cebolla, pan rallado y agua), cambia el componente a "g servidos" — el food cost baja de 26,6% a 21,4%.'},
    pita:{comp:[['r_pita',450]]},
    tzatziki:{comp:[['r_tzatziki',200]]},
    mousaka:{comp:[['r_mousaka',280]],
@@ -1258,10 +1259,28 @@ var CFG_BASE={merma:3, meta:20, empaque:0, gas:0, labor:0};
 
 var INGREDIENTES={}, RECETAS={}, ENSAMBLES={}, CFG={};
 
+var MODELO_V=2;
 function costeoModelo(){
-  return {v:1, ingredientes:INGREDIENTES, recetas:RECETAS, ensambles:ENSAMBLES, cfg:CFG};
+  return {v:MODELO_V, ingredientes:INGREDIENTES, recetas:RECETAS, ensambles:ENSAMBLES, cfg:CFG};
+}
+/* Sube modelos guardados con versiones viejas al esquema actual. */
+function costeoMigrar(d){
+  if(!d) return d;
+  var v=num(d.v)||1;
+  if(v<2){
+    /* el corte pasó a llamarse brazo de cerdo */
+    if(d.ingredientes && d.ingredientes.pernil) d.ingredientes.pernil.n='Brazo de cerdo';
+    /* las porciones de carne se medían sobre la mezcla marinada, no sobre la carne */
+    ['gyros_cerdo','gyros_pollo','gyros_bondiola','kebab'].forEach(function(k){
+      var e=d.ensambles && d.ensambles[k];
+      if(e && e.comp && e.comp[0] && e.comp[0].length<3) e.comp[0][2]='base';
+    });
+    d.v=2;
+  }
+  return d;
 }
 function costeoCargarModelo(d){
+  d=costeoMigrar(d);
   INGREDIENTES = (d && d.ingredientes) ? d.ingredientes : ingredientesBase();
   RECETAS      = (d && d.recetas)      ? d.recetas      : recetasBase();
   ENSAMBLES    = (d && d.ensambles)    ? d.ensambles    : ensamblesBase();
@@ -1332,6 +1351,16 @@ function recetaCalc(rk){
           copGFinal: fin ? costo/fin : 0};
 }
 
+/* Qué fracción del lote consume un componente.
+   modo 'base'    -> la porción se mide en gramos del ingrediente base (150 g de carne)
+   modo 'servido' -> la porción se mide en gramos de la receta terminada (90 g de pan) */
+function fracLote(rc, comp, qty){
+  var cant=num(comp[1])*(qty==null?1:qty);
+  if((comp[2]||'servido')==='base'){
+    var b=num(rc.r.baseG); return b ? cant/b : 0;
+  }
+  return rc.final ? cant/rc.final : 0;
+}
 function productoCalc(pk){
   var p=prod(pk), e=ENSAMBLES[pk];
   if(!p || !e) return null;
@@ -1342,9 +1371,10 @@ function productoCalc(pk){
   } else {
     (e.comp||[]).forEach(function(c){
       var rc=recetaCalc(c[0]); if(!rc) return;
-      var costo=rc.copGFinal*num(c[1]);
+      var costo=rc.costo*fracLote(rc,c);
       ing+=costo;
-      det.push({nombre:rc.r.n, g:num(c[1]), costo:costo, rk:c[0]});
+      det.push({nombre:rc.r.n, g:num(c[1]), modo:(c[2]||'servido'),
+                base:(INGREDIENTES[rc.r.base]||{}).n, costo:costo, rk:c[0]});
     });
   }
   var merma = fijo ? 0 : ing*(num(CFG.merma)/100);
@@ -1375,7 +1405,7 @@ function ingredientesDe(pk, qty){
   if(!e || e.costoFijo!=null) return out;
   (e.comp||[]).forEach(function(c){
     var rc=recetaCalc(c[0]); if(!rc || !rc.final) return;
-    var frac=(num(c[1])*qty)/rc.final;      /* fracción del lote */
+    var frac=fracLote(rc,c,qty);
     rc.lineas.forEach(function(l){
       out[l.ing.k]=(out[l.ing.k]||0)+l.g*frac;
     });
@@ -1676,7 +1706,7 @@ function costeoRecetas(){
 /* ---------- PRODUCTOS ---------- */
 function costeoProductos(){
   var card=el('<div class="card"><h2>Productos armados</h2>'
-    +'<div class="muted small" style="margin-bottom:8px">Cada producto se arma con porciones de receta, en gramos servidos.</div></div>');
+    +'<div class="muted small" style="margin-bottom:8px">Cada producto se arma con porciones de receta. Cada porción se mide en <b>gramos del ingrediente base</b> (150 g de carne) o en <b>gramos ya preparados</b> (90 g de pan) — el selector de al lado lo define.</div></div>');
 
   PRODUCTOS.forEach(function(p){
     var c=productoCalc(p.key); if(!c) return;
@@ -1697,8 +1727,10 @@ function costeoProductos(){
       if(c.e.nota)   det.appendChild(el('<div class="banner" style="margin-bottom:6px">'+esc(c.e.nota)+'</div>'));
 
       c.det.forEach(function(d){
+        var comoTxt = d.g==null ? '' :
+          ' <span class="muted">'+g(d.g)+(d.modo==='base' ? ' de '+esc(d.base||'base') : ' servidos')+'</span>';
         det.appendChild(el('<div class="row" style="padding:3px 0"><div class="small">'+esc(d.nombre)
-          +(d.g!=null?' <span class="muted">'+g(d.g)+'</span>':'')+'</div>'
+          +comoTxt+'</div>'
           +'<div class="small money">'+fmt(d.costo)+'</div></div>'));
       });
       if(c.merma) det.appendChild(el('<div class="row" style="padding:3px 0"><div class="small muted">Merma '+num(CFG.merma)+'%</div>'
@@ -1720,10 +1752,18 @@ function costeoProductos(){
         var eds=el('<div style="margin-top:8px"></div>');
         (c.e.comp||[]).forEach(function(comp, idx){
           var r=RECETAS[comp[0]];
-          eds.appendChild(el('<label class="f">'+esc(r?r.n:comp[0])+' (g servidos)</label>'));
-          var inp=el('<input class="f" type="number" step="any" value="'+num(comp[1])+'">');
+          var modo=comp[2]||'servido';
+          var baseN=(r && INGREDIENTES[r.base]) ? INGREDIENTES[r.base].n : 'ingrediente base';
+          eds.appendChild(el('<label class="f">'+esc(r?r.n:comp[0])+'</label>'));
+          var fila=el('<div style="display:flex;gap:6px"></div>');
+          var inp=el('<input class="f" type="number" step="any" value="'+num(comp[1])+'" style="flex:1">');
           inp.setAttribute('data-idx', idx);
-          eds.appendChild(inp);
+          var sel=el('<select class="f" style="flex:1.4">'
+            +'<option value="base"'+(modo==='base'?' selected':'')+'>g de '+esc(baseN)+'</option>'
+            +'<option value="servido"'+(modo!=='base'?' selected':'')+'>g ya preparados</option></select>');
+          sel.setAttribute('data-modo', idx);
+          fila.appendChild(inp); fila.appendChild(sel);
+          eds.appendChild(fila);
         });
         det.appendChild(eds);
       }
@@ -1740,6 +1780,11 @@ function costeoProductos(){
           for(var q=0;q<inputs.length;q++){
             var ix=parseInt(inputs[q].getAttribute('data-idx'),10);
             c.e.comp[ix][1]=num(inputs[q].value);
+          }
+          var sels=det.querySelectorAll('select[data-modo]');
+          for(var w=0;w<sels.length;w++){
+            var iy=parseInt(sels[w].getAttribute('data-modo'),10);
+            c.e.comp[iy][2]=sels[w].value;
           }
         }
         c.e.empaque=num(extra.querySelector('[data-emp]').value);
