@@ -1244,8 +1244,7 @@ function ensamblesBase(){
    gyros_cerdo:{comp:[['r_cerdo',150,'base'],['r_pita',90],['r_tzatziki',55]]},
    gyros_pollo:{comp:[['r_pollo',150,'base'],['r_pita',90],['r_tzatziki',55]]},
    gyros_bondiola:{comp:[['r_bondiola',150,'base'],['r_pita',90],['r_tzatziki',55]]},
-   kebab:{comp:[['r_kebab',150,'base'],['r_pita',90],['r_tzatziki',55]],
-     alerta:'La porción está tomada como 150 g de carne molida sola. Si en cocina se pesan 150 g de la mezcla ya armada (con cebolla, pan rallado y agua), cambia el componente a "g servidos" — el food cost baja de 26,6% a 21,4%.'},
+   kebab:{comp:[['r_kebab',150],['r_pita',90],['r_tzatziki',55]]},
    pita:{comp:[['r_pita',450]]},
    tzatziki:{comp:[['r_tzatziki',200]]},
    mousaka:{comp:[['r_mousaka',280]],
@@ -1259,14 +1258,19 @@ var CFG_BASE={merma:3, meta:20, empaque:0, gas:0, labor:0};
 
 var INGREDIENTES={}, RECETAS={}, ENSAMBLES={}, CFG={};
 
-var MODELO_V=2;
+var MODELO_V=3;
 function costeoModelo(){
   return {v:MODELO_V, ingredientes:INGREDIENTES, recetas:RECETAS, ensambles:ENSAMBLES, cfg:CFG};
 }
-/* Sube modelos guardados con versiones viejas al esquema actual. */
+/* Sube modelos guardados con versiones viejas al esquema actual.
+   Marca costeoMigrado para que el arranque vuelva a guardar: si no, la versión
+   guardada nunca avanza y las migraciones se repiten en cada carga, pisando
+   cambios que el usuario haya hecho a propósito después. */
+var costeoMigrado=false;
 function costeoMigrar(d){
   if(!d) return d;
   var v=num(d.v)||1;
+  if(v<MODELO_V) costeoMigrado=true;
   if(v<2){
     /* el corte pasó a llamarse brazo de cerdo */
     if(d.ingredientes && d.ingredientes.pernil) d.ingredientes.pernil.n='Brazo de cerdo';
@@ -1276,6 +1280,15 @@ function costeoMigrar(d){
       if(e && e.comp && e.comp[0] && e.comp[0].length<3) e.comp[0][2]='base';
     });
     d.v=2;
+  }
+  if(v<3){
+    /* el kebab se pesa ya armado (con cebolla, pan rallado y agua), no la carne sola */
+    var ek=d.ensambles && d.ensambles.kebab;
+    if(ek){
+      if(ek.comp && ek.comp[0]) ek.comp[0][2]='servido';
+      delete ek.alerta;
+    }
+    d.v=3;
   }
   return d;
 }
@@ -1888,7 +1901,7 @@ cargarPedidos(function(d){
     aplicarCosteos(costeos);
     cargarRecetas(function(rec){
       costeoCargarModelo(rec);
-      if(!rec) guardarRecetas();      /* primera vez: deja el modelo base guardado */
+      if(!rec || costeoMigrado) guardarRecetas();   /* primera vez, o modelo recién migrado */
       aplicarCosteoRecetas();         /* el FC por receta manda sobre el manual */
       render('hoy');
     });
