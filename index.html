@@ -1183,8 +1183,9 @@ function renderClientes(){
      1) Ingredientes  -> precio de compra real -> COP por gramo
      2) Recetas       -> ratios sobre un ingrediente base + factor de rendimiento
      3) Productos     -> se arman con porciones de recetas + empaque/gas/mano de obra
-   El food cost % se calcula solo con ingredientes + merma (comparable con la meta
-   de 20%). Empaque, gas y mano de obra entran en "costo total" y "margen real". */
+   El food cost % es el costo total (ingredientes + merma + empaque + gas + mano
+   de obra) sobre el precio de venta — la meta de 28–30% de Haris ya está pensada
+   para incluirlos, a diferencia del estándar de industria de ingredientes solos. */
 
 function ingredientesBase(){
   return {
@@ -1413,7 +1414,7 @@ function productoCalc(pk){
   return {p:p, e:e, det:det, fijo:fijo, vacio:(!fijo && !det.length),
           ing:ing, merma:merma, ingT:ingT,
           empaque:emp, gas:gas, labor:lab, total:total,
-          fc: p.precio ? ingT/p.precio*100 : 0,
+          fc: p.precio ? total/p.precio*100 : 0,
           margen: p.precio-total,
           margenPct: p.precio ? (p.precio-total)/p.precio*100 : 0};
 }
@@ -1542,7 +1543,7 @@ function costeoResumen(){
 
   calcs.sort(function(a,b){ return b.fc-a.fc; });
   var card=el('<div class="card"><h2>Food cost por producto · meta '+textoMetaBanda()+'%</h2>'
-    +'<div class="muted small" style="margin-bottom:8px">El FC son <b>ingredientes + '+num(CFG.merma)+'% de merma</b>. Empaque, gas y mano de obra van aparte, en el margen real.</div></div>');
+    +'<div class="muted small" style="margin-bottom:8px">El FC es <b>ingredientes + '+num(CFG.merma)+'% de merma + empaque + gas + mano de obra</b>, todo como % del precio de venta.</div></div>');
   calcs.forEach(function(c){
     var extra=c.empaque+c.gas+c.labor;
     card.appendChild(el('<div class="item-row">'
@@ -1578,7 +1579,7 @@ function costeoResumen(){
     +'<div><label class="f">Gas COP</label><input class="f" type="number" step="50" id="cf-gas" value="'+num(CFG.gas)+'"></div>'
     +'<div style="grid-column:1/-1"><label class="f">Mano de obra COP por porción</label><input class="f" type="number" step="50" id="cf-labor" value="'+num(CFG.labor)+'"></div>'
     +'</div>'
-    +'<div class="muted small" style="margin:6px 0">Empaque, gas y mano de obra aplican a todos los productos; se pueden ajustar uno por uno en Productos.</div>'
+    +'<div class="muted small" style="margin:6px 0">Empaque, gas y mano de obra entran en el food cost y aplican a todos los productos; se pueden ajustar uno por uno en Productos.</div>'
     +'<button class="btn primario" id="cf-save">Guardar parámetros</button></div>');
   cfg.querySelector('#cf-save').addEventListener('click', function(){
     CFG.merma=num(cfg.querySelector('#cf-merma').value);
