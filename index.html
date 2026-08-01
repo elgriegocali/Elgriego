@@ -155,14 +155,26 @@ function textoMetaBanda(){ return num(CFG.metaMin)+'\u2013'+num(CFG.metaMax); }
 function hoyISO(){ var d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function mesDe(f){ return (f||'').slice(0,7); }
 function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+/* Precio de una línea de pedido: el que quedó sellado al registrarlo.
+   Si el pedido es viejo y no lo tiene, se usa el precio de lista actual. */
+function precioItem(i){
+  if(i && i.precio!=null && !isNaN(i.precio)) return i.precio;
+  var p=prod(i.key); return p? p.precio : 0;
+}
 function calc(items){
   var venta=0, costo=0;
   (items||[]).forEach(function(i){
     var p=prod(i.key); if(!p) return;
-    venta += p.precio*i.qty;
-    costo += p.precio*i.qty*fcDe(p)/100;
+    var pr=precioItem(i);
+    venta += pr*i.qty;
+    costo += pr*i.qty*fcDe(p)/100;
   });
   return {venta:venta, costo:costo, margen:venta-costo, fcPct: venta? costo/venta*100 : 0};
+}
+/* Lee un valor en pesos escrito a mano: acepta "20.000", "20,000" y "20000". */
+function parseCOP(s){
+  var d=String(s==null?'':s).replace(/[^\d]/g,'');
+  return d? parseInt(d,10) : 0;
 }
 function waLink(tel, texto){
   var t=(tel||'').replace(/\D/g,''); if(!t) return null;
@@ -177,7 +189,7 @@ function totalPedido(p){ return calc(p.items).venta + (p.domicilio||0); }
 
 function msgConfirmar(p){
   var t=calc(p.items);
-  var lineas=p.items.map(function(it){ var pr=prod(it.key); return pr? ('• '+it.qty+'× '+pr.nombre+' — '+fmt(pr.precio*it.qty)) : ''; }).filter(Boolean).join('\n');
+  var lineas=p.items.map(function(it){ var pr=prod(it.key); return pr? ('• '+it.qty+'× '+pr.nombre+' — '+fmt(precioItem(it)*it.qty)) : ''; }).filter(Boolean).join('\n');
   var msg=saludo(p)+' Gracias por tu pedido en El Griego. Te lo confirmo:\n\n'+lineas+'\n';
   if(p.tipo==='Domicilio'){
     if(t.venta>=UMBRAL) msg+='\n🎉 ¡El domicilio va gratis!';
@@ -202,6 +214,7 @@ function msgEntrega(p){
    3) memoria         -> último recurso (solo la sesión actual)  */
 var memoria = null;
 var memoriaCosteos = {};
+var memoriaPrecios = {};
 var modoGuardado = 'sesion'; // 'claude' | 'dispositivo' | 'sesion'
 
 function localStorageDisponible(){
@@ -275,6 +288,60 @@ function aplicarCosteos(costeos){
   PRODUCTOS.forEach(function(p){
     if(costeos[p.key]!=null) p.fc=costeos[p.key];
   });
+}
+
+/* ---- precios editables desde la app ----
+   El precio de lista vive en PRODUCTOS; los cambios se guardan aparte en
+   'elgriego_precios' y se aplican encima al arrancar. precioBase guarda el
+   precio original del código para poder restablecerlo. */
+function cargarPrecios(cb){
+  if (window.storage && typeof window.storage.get==='function'){
+    window.storage.get('elgriego_precios').then(function(r){
+      var d={}; try{ if(r && r.value) d=JSON.parse(r.value); }catch(e){}
+      cb(d);
+    }).catch(function(){ cb({}); });
+    return;
+  }
+  if (localStorageDisponible()){
+    try{ var v=localStorage.getItem('elgriego_precios'); cb(v?JSON.parse(v):{}); return; }catch(e){ cb({}); return; }
+  }
+  cb(memoriaPrecios);
+}
+function guardarPrecios(d){
+  memoriaPrecios=d;
+  if (modoGuardado==='claude' && window.storage && typeof window.storage.set==='function'){
+    window.storage.set('elgriego_precios', JSON.stringify(d)).catch(function(){});
+    return;
+  }
+  if (modoGuardado==='dispositivo'){
+    try{ localStorage.setItem('elgriego_precios', JSON.stringify(d)); }catch(e){}
+  }
+}
+function aplicarPrecios(precios){
+  PRODUCTOS.forEach(function(p){
+    if(p.precioBase==null) p.precioBase=p.precio;
+    var v=precios && precios[p.key];
+    if(v!=null && !isNaN(v) && v>0) p.precio=v;
+    else p.precio=p.precioBase;
+  });
+}
+/* Congela el precio de venta dentro de cada pedido ya guardado.
+   Los pedidos viejos se registraron con el precio de lista de ese momento,
+   que es el que trae el código — por eso se sella antes de aplicar los
+   precios editados. Así un cambio de precio nunca altera lo ya facturado. */
+function sellarPreciosPedidos(){
+  var cambios=false;
+  (pedidos||[]).forEach(function(p){
+    (p.items||[]).forEach(function(it){
+      if(it.precio==null){
+        var pr=prod(it.key);
+        /* precio de lista del código, no el editado: es el que regía cuando
+           se registró el pedido */
+        if(pr){ it.precio=(pr.precioBase!=null?pr.precioBase:pr.precio); cambios=true; }
+      }
+    });
+  });
+  if(cambios) guardarPedidos(pedidos);
 }
 
 /* ================= APP ================= */
@@ -477,7 +544,7 @@ function tarjetaPedido(p){
   var s='<hr class="s">';
   p.items.forEach(function(it){
     var pr=prod(it.key);
-    if(pr) s+='<div class="row small"><span>'+it.qty+' × '+esc(pr.nombre)+'</span><span class="money">'+fmt(pr.precio*it.qty)+'</span></div>';
+    if(pr) s+='<div class="row small"><span>'+it.qty+' × '+esc(pr.nombre)+'</span><span class="money">'+fmt(precioItem(it)*it.qty)+'</span></div>';
   });
   if((p.domicilio||0)>0) s+='<div class="row small"><span>Domicilio</span><span class="money">'+fmt(p.domicilio)+'</span></div>';
   s+='<hr class="s"><div class="row small"><span class="muted">Margen estimado</span><span class="money" style="color:var(--oliva-osc)">'+fmt(t.margen)+' · FC '+t.fcPct.toFixed(1)+'%</span></div>';
@@ -532,9 +599,18 @@ function tarjetaPedido(p){
   edit.querySelector('[data-e-notas]').value=p.notas||'';
   edit.querySelector('[data-e-dom]').value=editDom||'';
 
+  /* precios ya sellados en el pedido: al editarlo se respetan, y solo los
+     productos que se agreguen ahora entran con el precio de lista de hoy */
+  var preciosSellados={};
+  (p.items||[]).forEach(function(it){ if(it.precio!=null) preciosSellados[it.key]=it.precio; });
+
   function listaEdit(){
     return Object.keys(editItems).filter(function(k){return editItems[k]>0;})
-      .map(function(k){ return {key:k, qty:editItems[k]}; });
+      .map(function(k){
+        var pr=prod(k);
+        var precio=(preciosSellados[k]!=null) ? preciosSellados[k] : (pr?pr.precio:0);
+        return {key:k, qty:editItems[k], precio:precio};
+      });
   }
   function actualizarEdit(){
     var t=calc(listaEdit());
@@ -562,7 +638,7 @@ function tarjetaPedido(p){
       var pr=prod(k); if(!pr) return;
       var fila=el('<div class="item-row">'
         +'<div style="flex:1;min-width:0"><div style="font-weight:700">'+esc(pr.nombre)+'</div>'
-        +'<div class="muted small">'+fmt(pr.precio*editItems[k])+'</div></div>'
+        +'<div class="muted small">'+fmt((preciosSellados[k]!=null?preciosSellados[k]:pr.precio)*editItems[k])+'</div></div>'
         +'<div class="qty"><button type="button" data-d="-1">−</button><span>'+editItems[k]+'</span><button type="button" data-d="1">+</button></div>'
         +'</div>');
       var btns=fila.querySelectorAll('.qty button');
@@ -716,7 +792,14 @@ function renderNuevo(){
     +'</div>');
   main.appendChild(card3);
 
-  function listaItems(){ return Object.keys(items).map(function(k){return {key:k, qty:items[k]};}); }
+  /* el precio de lista de hoy queda sellado en el pedido: si mañana cambia,
+     este pedido conserva lo que se cobró */
+  function listaItems(){
+    return Object.keys(items).map(function(k){
+      var pr=prod(k);
+      return {key:k, qty:items[k], precio: pr?pr.precio:0};
+    });
+  }
 
   function actualizarTotal(){
     var t=calc(listaItems());
@@ -784,6 +867,8 @@ function renderMenu(){
       +'<div style="font-weight:700">'+esc(p.nombre)+(p.destacar?' <span class="chip rompe">dar énfasis</span>':'')+'</div>'
       +'<div class="muted small">'+fmt(p.precio)+' · '+esc(p.unidad)+(p.nota?' · '+esc(p.nota):'')+'</div>'
       +'<div style="margin-top:3px">'
+      +(p.precioBase!=null && p.precio!==p.precioBase
+        ? '<span class="chip neutro">precio editado · antes '+fmt(p.precioBase)+'</span> ' : '')
       +(p.clase?'<span class="chip '+chipClase(p.clase)+'">'+esc(p.clase)+'</span> ':'')
       +(p.fc!=null
         ? '<span class="chip '+claseFC(p.fc)+'">FC '+p.fc+'%</span>'
@@ -795,8 +880,60 @@ function renderMenu(){
     var right=el('<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0">'
       +'<div class="muted small" style="text-align:right">'+(cnt[p.key]||0)+' und<br/>mes</div>'
       +'<button class="btn fant" style="padding:4px 8px;font-size:11px" data-costear="1">'
-      +(p.fcSrc==='receta'?'Ver receta':(editable?'Editar FC':'Costear'))+'</button></div>');
+      +(p.fcSrc==='receta'?'Ver receta':(editable?'Editar FC':'Costear'))+'</button>'
+      +'<button class="btn fant" style="padding:4px 8px;font-size:11px" data-precio="1">Editar precio</button>'
+      +'</div>');
     wrap.appendChild(right);
+
+    /* inline: cambiar el precio de venta */
+    var formP=el('<div style="display:none;width:100%;padding-top:6px;border-top:1px dashed var(--linea)">'
+      +'<label class="f">Precio de venta (COP)</label>'
+      +'<div style="display:flex;gap:8px;align-items:center">'
+      +'<input class="f" inputmode="numeric" placeholder="ej. 20.000" style="font-size:15px;max-width:140px" data-pv>'
+      +'<button class="btn oliva" style="flex:1" data-p-guardar="1">Guardar</button>'
+      +'<button class="btn fant" data-p-cancelar="1">Cancelar</button>'
+      +'</div>'
+      +'<div class="muted small" data-p-preview style="margin-top:4px"></div>'
+      +'<div class="muted small" style="margin-top:4px">Los pedidos ya registrados conservan el precio con el que se cobraron.</div>'
+      +'</div>');
+    wrap.appendChild(formP);
+
+    var inputP=formP.querySelector('[data-pv]');
+    var previewP=formP.querySelector('[data-p-preview]');
+    inputP.value=p.precio;
+
+    function pintarPreviewPrecio(){
+      var v=parseCOP(inputP.value);
+      if(v>0){
+        var fcNuevo=fcDe(p)*p.precio/v;      /* el costo no cambia: el FC se mueve con el precio */
+        previewP.textContent='Margen '+fmt(v*(1-fcNuevo/100))+' · food cost quedaría en '+fcNuevo.toFixed(1)+'%'
+          +(p.precioBase!=null && v!==p.precioBase ? ' · precio de lista '+fmt(p.precioBase) : '');
+      } else { previewP.textContent=''; }
+    }
+    inputP.addEventListener('input', pintarPreviewPrecio);
+    pintarPreviewPrecio();
+
+    right.querySelector('[data-precio]').addEventListener('click', function(){
+      formP.style.display=formP.style.display==='none'?'block':'none';
+      if(formP.style.display==='block'){ inputP.focus(); inputP.select(); }
+    });
+    formP.querySelector('[data-p-cancelar]').addEventListener('click', function(){
+      formP.style.display='none';
+      inputP.value=p.precio; pintarPreviewPrecio();
+    });
+    formP.querySelector('[data-p-guardar]').addEventListener('click', function(){
+      var v=parseCOP(inputP.value);
+      if(v<=0){ alert('Escribe un precio válido en pesos, por ejemplo 20.000'); return; }
+      cargarPrecios(function(precios){
+        precios=precios||{};
+        if(p.precioBase!=null && v===p.precioBase) delete precios[p.key];   /* vuelve al de lista */
+        else precios[p.key]=v;
+        guardarPrecios(precios);
+        aplicarPrecios(precios);
+        aplicarCosteoRecetas();      /* el FC por receta se recalcula sobre el precio nuevo */
+        render('menu');
+      });
+    });
 
     /* inline costeo form — hidden by default */
     var form=el('<div style="display:none;width:100%;padding-top:6px;border-top:1px dashed var(--linea)">'
@@ -1003,11 +1140,14 @@ function backupCard(){
   var msg=card.querySelector('#bk-msg');
   card.querySelector('#bk-exp').addEventListener('click', function(){
     cargarCosteos(function(costeos){
-      var sobre={ v:3, pedidos:pedidos, costeos:costeos, recetas:costeoModelo() };
+     cargarPrecios(function(precios){
+      var sobre={ v:4, pedidos:pedidos, costeos:costeos, recetas:costeoModelo(), precios:precios };
       ta.value=JSON.stringify(sobre);
       ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length);
       var nCost=Object.keys(costeos||{}).length;
-      var resumen=pedidos.length+' pedidos · '+nCost+' costeos · costeo por recetas';
+      var nPre=Object.keys(precios||{}).length;
+      var resumen=pedidos.length+' pedidos · '+nCost+' costeos · costeo por recetas'
+        +(nPre?' · '+nPre+' precios':'');
       var copiado=false;
       if(navigator.clipboard && navigator.clipboard.writeText){
         navigator.clipboard.writeText(ta.value).then(function(){ msg.textContent='Copia creada y copiada al portapapeles ('+resumen+').'; });
@@ -1017,6 +1157,7 @@ function backupCard(){
         try{ document.execCommand('copy'); }catch(e){}
         msg.textContent='Copia creada ('+resumen+'). Mantén presionado el texto para copiarlo.';
       }
+     });
     });
   });
   card.querySelector('#bk-imp').addEventListener('click', function(){
@@ -1046,6 +1187,14 @@ function backupCard(){
         guardarRecetas();
         resumen+=' · recetas';
       }
+      /* precios editados (copias v4 en adelante) */
+      var nuevosPrecios=(d && d.precios && typeof d.precios==='object') ? d.precios : {};
+      guardarPrecios(nuevosPrecios);
+      aplicarPrecios(nuevosPrecios);
+      var nPre=Object.keys(nuevosPrecios).length;
+      if(nPre) resumen+=' · '+nPre+' precios';
+      /* pedidos de copias viejas: se sellan con el precio de lista */
+      sellarPreciosPedidos();
       aplicarCosteoRecetas();
       msg.textContent='Restaurado: '+resumen+'.';
       render('hoy');
@@ -2278,13 +2427,17 @@ function costeoCompras(){
 /* ================= INICIO ================= */
 cargarPedidos(function(d){
   pedidos=d;
-  cargarCosteos(function(costeos){
-    aplicarCosteos(costeos);
-    cargarRecetas(function(rec){
-      costeoCargarModelo(rec);
-      if(!rec || costeoMigrado) guardarRecetas();   /* primera vez, o modelo recién migrado */
-      aplicarCosteoRecetas();         /* el FC por receta manda sobre el manual */
-      render('hoy');
+  sellarPreciosPedidos();             /* congela el precio de lo ya facturado */
+  cargarPrecios(function(precios){
+    aplicarPrecios(precios);          /* precios editados encima del de lista */
+    cargarCosteos(function(costeos){
+      aplicarCosteos(costeos);
+      cargarRecetas(function(rec){
+        costeoCargarModelo(rec);
+        if(!rec || costeoMigrado) guardarRecetas();   /* primera vez, o modelo recién migrado */
+        aplicarCosteoRecetas();       /* el FC por receta manda sobre el manual */
+        render('hoy');
+      });
     });
   });
 });
