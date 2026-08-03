@@ -1133,11 +1133,48 @@ function renderMenu(){
 function csvQ(s){ s=String(s==null?'':s); return /[",;\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s; }
 function csvFila(a){ return a.map(csvQ).join(';'); }
 function nombreProd(k){ var p=prod(k); return p? p.nombre : k; }
-function pedidosOrdenados(){
-  return pedidos.slice().sort(function(a,b){
+function pedidosOrdenados(lista){
+  return (lista||pedidos).slice().sort(function(a,b){
     var fa=a.fecha||'', fb=b.fecha||'';
     return fa<fb?-1:fa>fb?1:0;
   });
+}
+
+/* ---- periodo del reporte: todo / un año / un mes ----
+   'anio' incluye lo corrido del año hasta hoy, porque no hay fechas futuras
+   más allá de los pedidos ya agendados. */
+var expModo='todo';     /* 'todo' | 'anio' | 'mes' */
+var expValor=null;      /* '2026' o '2026-07' */
+var MESES_ES=['enero','febrero','marzo','abril','mayo','junio',
+              'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+function etiquetaMes(m){
+  var a=(m||'').split('-');
+  if(a.length<2) return m||'';
+  return MESES_ES[parseInt(a[1],10)-1]+' '+a[0];
+}
+function periodosDisponibles(){
+  var anios={}, meses={};
+  pedidos.forEach(function(p){
+    if(!p.fecha) return;
+    anios[p.fecha.slice(0,4)]=true;
+    meses[mesDe(p.fecha)]=true;
+  });
+  function desc(o){ return Object.keys(o).sort().reverse(); }
+  return {anios:desc(anios), meses:desc(meses)};
+}
+function pedidosDelPeriodo(){
+  if(expModo==='todo' || !expValor) return pedidos;
+  if(expModo==='anio') return pedidos.filter(function(p){ return (p.fecha||'').slice(0,4)===expValor; });
+  return pedidos.filter(function(p){ return mesDe(p.fecha)===expValor; });
+}
+function etiquetaPeriodo(){
+  if(expModo==='todo' || !expValor) return 'todo el historial';
+  if(expModo==='anio') return 'año '+expValor;
+  return etiquetaMes(expValor);
+}
+function sufijoArchivo(){
+  if(expModo==='todo' || !expValor) return 'completo_'+hoyISO();
+  return expValor;
 }
 function diasDesde(f){
   if(!f) return '';
@@ -1147,12 +1184,12 @@ function diasDesde(f){
 /* 1) Historial completo de pedidos — una fila por línea de pedido.
    El domicilio y el total van solo en la primera línea de cada pedido, para
    que sumar esas columnas en Excel no cuente el mismo pedido dos veces. */
-function csvPedidos(){
+function csvPedidos(lista){
   var L=[];
   L.push(csvFila(['pedido_id','fecha','mes','cliente','telefono','tipo','canal','estado','pago',
     'producto','cantidad','precio_unitario','subtotal','food_cost_%','costo_linea','margen_linea',
     'domicilio','total_pedido','notas']));
-  pedidosOrdenados().forEach(function(p){
+  pedidosOrdenados(lista).forEach(function(p){
     var t=calc(p.items);
     var total=t.venta+(p.domicilio||0);
     (p.items||[]).forEach(function(it, idx){
@@ -1177,10 +1214,10 @@ function csvPedidos(){
 
 /* 2) Ingresos reales por producto — solo pedidos Entregado.
    Lo que está en proceso va aparte para no inflar la cifra real. */
-function csvIngresosProducto(){
+function csvIngresosProducto(lista){
   var real={}, proceso={}, porMes={}, domReal=0;
   var mesesSet={};
-  pedidos.forEach(function(p){
+  (lista||pedidos).forEach(function(p){
     if(p.estado==='Cancelado') return;
     var entregado=(p.estado==='Entregado');
     if(entregado) domReal+=(p.domicilio||0);
@@ -1203,7 +1240,7 @@ function csvIngresosProducto(){
   Object.keys(real).forEach(function(k){ totalReal+=real[k].ing; });
 
   var L=[];
-  L.push('INGRESOS REALES POR PRODUCTO (pedidos entregados)');
+  L.push('INGRESOS REALES POR PRODUCTO (pedidos entregados) — '+etiquetaPeriodo());
   L.push(csvFila(['producto','unidades','ingresos','precio_promedio','food_cost_%',
     'costo_estimado','margen_estimado','%_de_ingresos']));
   Object.keys(real).sort(function(a,b){ return real[b].ing-real[a].ing; }).forEach(function(k){
@@ -1238,11 +1275,19 @@ function csvIngresosProducto(){
 
 /* 3) Clientes y frecuencia — mismo criterio que la pestaña Clientes:
    frecuente = 3+ pedidos, reactivar = más de 30 días sin pedir. */
-function csvClientes(){
-  var mapa={};
+function csvClientes(lista){
+  /* Los totales son del periodo elegido, pero "última compra" y "días sin
+     pedir" se miden contra todo el historial: un cliente no se vuelve
+     inactivo solo porque el reporte mire un mes. */
+  var ultimaGlobal={};
   pedidos.filter(function(p){return p.estado!=='Cancelado';}).forEach(function(p){
+    var k=(p.telefono||p.cliente||'').trim(); if(!k || !p.fecha) return;
+    if(!ultimaGlobal[k] || p.fecha>ultimaGlobal[k]) ultimaGlobal[k]=p.fecha;
+  });
+  var mapa={};
+  (lista||pedidos).filter(function(p){return p.estado!=='Cancelado';}).forEach(function(p){
     var k=(p.telefono||p.cliente||'').trim(); if(!k) return;
-    if(!mapa[k]) mapa[k]={nombre:p.cliente||k, telefono:p.telefono||'', pedidos:0, total:0,
+    if(!mapa[k]) mapa[k]={clave:k, nombre:p.cliente||k, telefono:p.telefono||'', pedidos:0, total:0,
                           primera:p.fecha, ultima:p.fecha, prods:{}, canales:{}};
     var m=mapa[k];
     m.pedidos++; m.total+=calc(p.items).venta+(p.domicilio||0);
@@ -1264,10 +1309,11 @@ function csvClientes(){
   Object.keys(mapa).map(function(k){return mapa[k];})
     .sort(function(a,b){ return b.total-a.total; })
     .forEach(function(c){
-      var d=diasDesde(c.ultima);
+      var ult=ultimaGlobal[c.clave]||c.ultima;
+      var d=diasDesde(ult);
       var fav=top(c.prods), can=top(c.canales);
       L.push(csvFila([c.nombre, c.telefono, c.pedidos, Math.round(c.total),
-        Math.round(c.total/c.pedidos), c.primera||'', c.ultima||'', d,
+        Math.round(c.total/c.pedidos), c.primera||'', ult||'', d,
         c.pedidos>=3?'si':'no', (d!=='' && d>30)?'si':'no',
         can.k||'', fav.k?nombreProd(fav.k):'', fav.n||0]));
     });
@@ -1293,7 +1339,7 @@ function descargarCSV(nombre, texto){
 
 function exportarDatosCard(){
   var reportes=[
-    {id:'pedidos',   titulo:'Historial completo de pedidos',
+    {id:'pedidos',   titulo:'Historial de pedidos',
      desc:'Una fila por producto de cada pedido, con precio cobrado y margen.',
      archivo:'elgriego_pedidos_',   gen:csvPedidos},
     {id:'ingresos',  titulo:'Ingresos reales por producto',
@@ -1304,10 +1350,58 @@ function exportarDatosCard(){
      archivo:'elgriego_clientes_',  gen:csvClientes}
   ];
 
+  var per=periodosDisponibles();
+  /* si el periodo guardado ya no existe (se borraron pedidos), volver a Todo */
+  if(expModo==='anio' && per.anios.indexOf(expValor)<0) expValor=per.anios[0]||null;
+  if(expModo==='mes'  && per.meses.indexOf(expValor)<0) expValor=per.meses[0]||null;
+  if(expModo!=='todo' && !expValor) expModo='todo';
+
   var card=el('<div class="card"><h2>Exportar datos</h2>'
     +'<div class="muted small" style="margin-bottom:8px">Archivos CSV para abrir en Excel. Si el iPhone no deja descargar, usa <b>Copiar</b> y pégalo en una nota o correo.</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:6px">'
+    +'<button class="btn fant" style="padding:6px 10px;font-size:12px" data-modo="todo">Todo</button>'
+    +'<button class="btn fant" style="padding:6px 10px;font-size:12px" data-modo="anio">Por año</button>'
+    +'<button class="btn fant" style="padding:6px 10px;font-size:12px" data-modo="mes">Por mes</button>'
+    +'<select class="f" data-periodo style="margin:0;flex:1;min-width:120px"></select>'
+    +'</div>'
+    +'<div class="muted small" data-ex-per style="margin-bottom:8px"></div>'
     +'<div class="muted small" id="ex-msg" style="margin-top:8px"></div></div>');
   var msg=card.querySelector('#ex-msg');
+  var sel=card.querySelector('[data-periodo]');
+  var lblPer=card.querySelector('[data-ex-per]');
+
+  function pintarPeriodo(){
+    var botones=card.querySelectorAll('[data-modo]');
+    for(var i=0;i<botones.length;i++){
+      var activo=botones[i].getAttribute('data-modo')===expModo;
+      botones[i].className='btn '+(activo?'oliva':'fant');
+      botones[i].style.padding='6px 10px'; botones[i].style.fontSize='12px';
+    }
+    sel.style.display = (expModo==='todo') ? 'none' : '';
+    if(expModo!=='todo'){
+      var vals = expModo==='anio' ? per.anios : per.meses;
+      sel.innerHTML = vals.map(function(v){
+        return '<option value="'+v+'"'+(v===expValor?' selected':'')+'>'
+          +esc(expModo==='anio'? v : etiquetaMes(v))+'</option>';
+      }).join('');
+    }
+    var n=pedidosDelPeriodo().length;
+    lblPer.textContent='Exportando '+etiquetaPeriodo()+' · '+n+' pedido'+(n!==1?'s':'')+'.';
+  }
+  var btns=card.querySelectorAll('[data-modo]');
+  for(var bi=0;bi<btns.length;bi++){
+    (function(b){
+      b.addEventListener('click', function(){
+        expModo=b.getAttribute('data-modo');
+        if(expModo==='anio') expValor=per.anios[0]||null;
+        else if(expModo==='mes') expValor=per.meses[0]||null;
+        else expValor=null;
+        pintarPeriodo(); msg.textContent='';
+      });
+    })(btns[bi]);
+  }
+  sel.addEventListener('change', function(){ expValor=sel.value; pintarPeriodo(); msg.textContent=''; });
+  pintarPeriodo();
 
   reportes.forEach(function(r){
     var fila=el('<div class="item-row" style="flex-wrap:wrap;gap:6px">'
@@ -1318,20 +1412,32 @@ function exportarDatosCard(){
       +'<button class="btn fant" style="padding:6px 10px;font-size:12px" data-cp>Copiar</button>'
       +'</div></div>');
 
+    function lista(){ return pedidosDelPeriodo(); }
+    function vacio(){
+      var l=lista();
+      if(!l.length){
+        msg.textContent = pedidos.length
+          ? 'No hay pedidos en '+etiquetaPeriodo()+'.'
+          : 'Todavía no hay pedidos que exportar.';
+        return true;
+      }
+      return false;
+    }
+
     fila.querySelector('[data-dl]').addEventListener('click', function(){
-      if(!pedidos.length){ msg.textContent='Todavía no hay pedidos que exportar.'; return; }
-      var texto=r.gen();
-      var ok=descargarCSV(r.archivo+hoyISO()+'.csv', texto);
+      if(vacio()) return;
+      var texto=r.gen(lista());
+      var ok=descargarCSV(r.archivo+sufijoArchivo()+'.csv', texto);
       msg.textContent = ok
-        ? 'Descargando '+r.titulo.toLowerCase()+'…'
+        ? 'Descargando '+r.titulo.toLowerCase()+' — '+etiquetaPeriodo()+'…'
         : 'Este navegador no permite descargar — usa Copiar.';
     });
     fila.querySelector('[data-cp]').addEventListener('click', function(){
-      if(!pedidos.length){ msg.textContent='Todavía no hay pedidos que exportar.'; return; }
-      var texto=r.gen();
+      if(vacio()) return;
+      var texto=r.gen(lista());
       if(navigator.clipboard && navigator.clipboard.writeText){
         navigator.clipboard.writeText(texto).then(
-          function(){ msg.textContent=r.titulo+': copiado al portapapeles.'; },
+          function(){ msg.textContent=r.titulo+' ('+etiquetaPeriodo()+'): copiado al portapapeles.'; },
           function(){ msg.textContent='No se pudo copiar — usa Descargar.'; });
       } else { msg.textContent='Este navegador no permite copiar — usa Descargar.'; }
     });
