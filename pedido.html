@@ -74,6 +74,15 @@ textarea.f{resize:vertical;min-height:64px}
 .alerta{background:var(--rojo-suave);border:1px solid #F0CFC7;color:var(--rojo);border-radius:9px;padding:9px 10px;font-size:12.5px;font-weight:700}
 .bar{height:6px;border-radius:5px;background:#ECEBE4;overflow:hidden;margin-top:6px}
 .bar>i{display:block;height:100%;border-radius:5px;background:var(--oliva);transition:width .25s}
+.fila-titulo{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.fila-titulo h2{margin:0}
+.editar{background:none;border:none;color:var(--azul);font-weight:800;font-size:12.5px;font-family:inherit;cursor:pointer;padding:4px 2px}
+.fila-carrito{padding:10px 0;border-bottom:1px dashed var(--linea)}
+.fila-carrito:last-of-type{border-bottom:none}
+.fila-carrito .n b{font-size:14px;color:var(--azul-osc);font-weight:800}
+.fila-carrito .u{font-size:11.5px;color:var(--gris);margin-top:2px}
+.fila-carrito .abajo{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:8px}
+.fila-carrito .m{font-variant-numeric:tabular-nums;font-weight:800;font-size:15px}
 .linea{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed var(--linea);font-size:13.5px}
 .linea:last-of-type{border-bottom:none}
 .linea .n{flex:1;min-width:0}
@@ -84,6 +93,8 @@ textarea.f{resize:vertical;min-height:64px}
 .barra{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;justify-content:center;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(246,245,240,0) 0%,var(--marmol) 38%)}
 .barra .in{width:100%;max-width:496px;background:var(--carta);border:1px solid var(--linea);border-radius:14px;box-shadow:0 6px 22px rgba(20,33,61,.14);padding:10px;display:flex;flex-direction:column;gap:8px}
 .barra .resumen{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--gris);font-weight:700}
+.barra .resumen.tocable{cursor:pointer}
+.barra .resumen.tocable span{color:var(--azul);text-decoration:underline;text-underline-offset:2px}
 .barra .resumen b{color:var(--azul-osc);font-size:16px;font-variant-numeric:tabular-nums}
 .btn{display:flex;align-items:center;justify-content:center;gap:7px;border:none;border-radius:11px;padding:13px 14px;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer;letter-spacing:.02em;text-decoration:none;width:100%}
 .btn.primario{background:var(--azul);color:#fff}
@@ -268,8 +279,12 @@ function enviar(){
 function el(html){ var d=document.createElement('div'); d.innerHTML=html; return d.firstElementChild; }
 
 function render(){
+  /* Si se quedó sin platos no hay nada que revisar ni que despachar. */
+  if(vista!=='carta' && unidades()===0){ vista='carta'; intento=false; }
   main.innerHTML='';
-  if(vista==='carta') renderCarta(); else renderDatos();
+  if(vista==='carta') renderCarta();
+  else if(vista==='carrito') renderCarrito();
+  else renderDatos();
   renderBarra();
 }
 
@@ -328,28 +343,63 @@ function renderCarta(){
   });
 }
 
+/* Aviso del umbral de domicilio. Se usa igual en el carrito y en los datos. */
+function bloqueDomicilio(caja, t){
+  if(datos.tipo!=='Domicilio') return;
+  if(t>=UMBRAL){
+    caja.appendChild(el('<div class="banner" style="margin-top:10px">🎉 El domicilio va por cuenta de la casa.</div>'));
+  }else{
+    caja.appendChild(el('<div class="aviso" style="margin-top:10px">Te faltan '+fmt(UMBRAL-t)+' para que el domicilio vaya por nuestra cuenta.</div>'));
+    caja.appendChild(el('<div class="bar"><i style="width:'+Math.min(100, t/UMBRAL*100).toFixed(1)+'%"></i></div>'));
+    caja.appendChild(el('<div class="pie-nota" style="text-align:left;padding:6px 0 0">Debajo de '+fmt(UMBRAL)+' te confirmamos el valor del domicilio por WhatsApp, según tu zona.</div>'));
+  }
+}
+
+/* Carrito: revisar y ajustar cantidades antes de dar los datos. */
+function renderCarrito(){
+  var t = subtotal();
+  var res = el('<div class="card"><h2>Tu pedido</h2></div>');
+  lineas().forEach(function(l){
+    res.appendChild(el(
+      '<div class="fila-carrito">'
+      +'<div class="n"><b>'+esc(l.p.nombre)+'</b><div class="u">'+esc(l.p.unidad)+' · '+fmt(l.p.precio)+' c/u</div></div>'
+      +'<div class="abajo">'
+      +'<div class="qty"><button data-menos="'+l.p.key+'" aria-label="Quitar uno">−</button><span>'+l.qty+'</span><button data-mas="'+l.p.key+'" aria-label="Agregar uno">+</button></div>'
+      +'<div class="m">'+fmt(l.p.precio*l.qty)+'</div>'
+      +'</div></div>'));
+  });
+  res.appendChild(el('<div class="total"><div class="lbl">Total de los platos</div><div class="val">'+fmt(t)+'</div></div>'));
+  bloqueDomicilio(res, t);
+  main.appendChild(res);
+
+  if(bajoMinimo()){
+    main.appendChild(el('<div class="aviso">El pedido mínimo es de '+fmt(MINIMO)+'. Te faltan '+fmt(MINIMO-t)+' para que podamos despacharlo.</div>'));
+  }
+  main.appendChild(el('<button class="btn fant" id="volver">← Seguir agregando</button>'));
+
+  res.querySelectorAll('[data-mas]').forEach(function(b){
+    b.onclick=function(){ sumar(b.getAttribute('data-mas'), 1); };
+  });
+  res.querySelectorAll('[data-menos]').forEach(function(b){
+    b.onclick=function(){ sumar(b.getAttribute('data-menos'), -1); };
+  });
+  document.getElementById('volver').onclick=function(){ vista='carta'; render(); window.scrollTo(0,0); };
+}
+
 function renderDatos(){
   var t = subtotal();
   var f = intento ? faltantes() : [];
   function malo(campo){ return f.indexOf(campo)>=0 ? ' style="border-color:var(--rojo)"' : ''; }
 
-  /* Resumen del pedido */
-  var res = el('<div class="card"><h2>Tu pedido</h2></div>');
+  /* Resumen, ya solo de lectura: para cambiar cantidades se vuelve al carrito. */
+  var res = el('<div class="card"><div class="fila-titulo"><h2>Tu pedido</h2><button class="editar" id="editar">Editar</button></div></div>');
   lineas().forEach(function(l){
     res.appendChild(el('<div class="linea"><div class="n">'+l.qty+'× '+esc(l.p.nombre)+'</div><div class="m">'+fmt(l.p.precio*l.qty)+'</div></div>'));
   });
   res.appendChild(el('<div class="total"><div class="lbl">Total de los platos</div><div class="val">'+fmt(t)+'</div></div>'));
-  if(datos.tipo==='Domicilio'){
-    if(t>=UMBRAL){
-      res.appendChild(el('<div class="banner" style="margin-top:10px">🎉 El domicilio va por cuenta de la casa.</div>'));
-    }else{
-      var falta = UMBRAL - t;
-      res.appendChild(el('<div class="aviso" style="margin-top:10px">Te faltan '+fmt(falta)+' para que el domicilio vaya por nuestra cuenta.</div>'));
-      res.appendChild(el('<div class="bar"><i style="width:'+Math.min(100, t/UMBRAL*100).toFixed(1)+'%"></i></div>'));
-      res.appendChild(el('<div class="pie-nota" style="text-align:left;padding:6px 0 0">Debajo de '+fmt(UMBRAL)+' te confirmamos el valor del domicilio por WhatsApp, según tu zona.</div>'));
-    }
-  }
+  bloqueDomicilio(res, t);
   main.appendChild(res);
+  res.querySelector('#editar').onclick=function(){ vista='carrito'; render(); window.scrollTo(0,0); };
 
   /* Datos de entrega */
   var form = el('<div class="card"><h2>Tus datos</h2></div>');
@@ -381,7 +431,7 @@ function renderDatos(){
     main.appendChild(el('<div class="alerta">Nos falta un dato para poder atenderte. Revisa los campos marcados.</div>'));
   }
 
-  main.appendChild(el('<button class="btn fant" id="volver">← Seguir agregando</button>'));
+  main.appendChild(el('<button class="btn fant" id="volver">← Volver al pedido</button>'));
   main.appendChild(el('<div class="pie-nota">Al enviar se abre WhatsApp con tu pedido ya escrito. Te confirmamos disponibilidad y el valor del domicilio por ahí mismo.</div>'));
 
   /* eventos */
@@ -393,7 +443,7 @@ function renderDatos(){
     var input=document.getElementById(campos[k]); if(!input) return;
     input.oninput=function(){ datos[k]=input.value; guardar('elgriego_cliente', datos); };
   });
-  document.getElementById('volver').onclick=function(){ vista='carta'; render(); window.scrollTo(0,0); };
+  document.getElementById('volver').onclick=function(){ vista='carrito'; render(); window.scrollTo(0,0); };
 }
 
 /* La barra es fija y tapa el final de la página: se le deja abajo el espacio que ocupa. */
@@ -411,22 +461,35 @@ function renderBarra(){
     return;
   }
   barra.style.display='flex';
-  var resumen = '<div class="resumen"><span>'+n+' '+(n===1?'plato':'platos')+'</span><b>'+fmt(t)+'</b></div>';
+  var resumen = '<div class="resumen'+(vista==='carta'?' tocable':'')+'" id="b-resumen">'
+    +'<span>'+n+' '+(n===1?'plato':'platos')
+    + (vista==='carta' ? ' · ver pedido' : '') +'</span><b>'+fmt(t)+'</b></div>';
+
   if(vista==='carta'){
     var aviso='';
     if(bajoMinimo()) aviso='<div class="pie-nota" style="padding:0">Mínimo '+fmt(MINIMO)+' — te faltan '+fmt(MINIMO-t)+'</div>';
     else if(datos.tipo==='Domicilio' && t<UMBRAL) aviso='<div class="pie-nota" style="padding:0">Te faltan '+fmt(UMBRAL-t)+' para el domicilio por cuenta de la casa</div>';
     barra.innerHTML='<div class="in">'+resumen+aviso
-      +'<button class="btn primario" id="b-continuar">Continuar</button></div>';
-    document.getElementById('b-continuar').onclick=function(){
+      +'<button class="btn primario" id="b-continuar">Ver mi pedido</button></div>';
+    var alCarrito=function(){ vista='carrito'; render(); window.scrollTo(0,0); };
+    document.getElementById('b-continuar').onclick=alCarrito;
+    document.getElementById('b-resumen').onclick=alCarrito;
+  }else if(vista==='carrito'){
+    var puede = !bajoMinimo();
+    barra.innerHTML='<div class="in">'+resumen
+      +'<button class="btn primario" id="b-datos"'+(puede?'':' disabled')+'>'
+      + (puede ? 'Continuar con mis datos' : 'Faltan '+fmt(MINIMO-t)+' para el mínimo')
+      +'</button>'
+      +'<button class="btn fant" id="b-vaciar">Vaciar pedido</button></div>';
+    document.getElementById('b-datos').onclick=function(){
+      if(bajoMinimo()) return;
       vista='datos'; intento=false; render(); window.scrollTo(0,0);
     };
+    document.getElementById('b-vaciar').onclick=vaciar;
   }else{
     barra.innerHTML='<div class="in">'+resumen
-      +'<button class="btn wa" id="b-enviar">Enviar pedido por WhatsApp</button>'
-      +'<button class="btn fant" id="b-vaciar">Vaciar pedido</button></div>';
+      +'<button class="btn wa" id="b-enviar">Enviar pedido por WhatsApp</button></div>';
     document.getElementById('b-enviar').onclick=enviar;
-    document.getElementById('b-vaciar').onclick=vaciar;
   }
   ajustarEspacio();
 }
