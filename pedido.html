@@ -37,7 +37,9 @@ html,body{min-height:100%;font-family:system-ui,-apple-system,sans-serif;backgro
 .reglas{display:flex;flex-direction:column;gap:5px;margin-top:9px}
 .regla{display:flex;gap:7px;align-items:flex-start;font-size:12.5px;color:var(--tinta)}
 .regla b{color:var(--azul-osc)}
-.regla .ic{color:var(--oliva);flex:none;font-weight:800}
+/* Rombo dibujado con CSS, no con un carácter: ◆ (U+25C6) no tiene glifo en
+   algunas versiones de iOS y salía como un cuadrito con interrogante. */
+.regla .ic{width:7px;height:7px;background:var(--oliva);transform:rotate(45deg);border-radius:1px;flex:none;margin-top:6px}
 .seccion{margin-top:2px}
 .seccion h3{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--oliva-osc);margin:14px 2px 7px;display:flex;align-items:center;gap:8px}
 .seccion h3::after{content:"";flex:1;height:1px;background:var(--linea)}
@@ -294,10 +296,10 @@ function renderCarta(){
     +'<h2>Arma tu pedido</h2>'
     +'<div class="intro">Cocinamos por encargo, plato por plato. Escoge lo tuyo, déjanos tus datos y cerramos el pedido por WhatsApp.</div>'
     +'<div class="reglas">'
-    +'<div class="regla"><span class="ic">◆</span><div>Pedido mínimo <b>'+fmt(MINIMO)+'</b>.</div></div>'
-    +'<div class="regla"><span class="ic">◆</span><div>Domicilio por cuenta de la casa desde <b>'+fmt(UMBRAL)+'</b>. Debajo de ese monto te confirmamos el valor según tu zona.</div></div>'
-    +'<div class="regla"><span class="ic">◆</span><div>Cubrimos hasta <b>5 km</b> a la redonda. Si quedas por fuera, te ofrecemos recogida.</div></div>'
-    +'<div class="regla"><span class="ic">◆</span><div>Pide con tiempo: todo sale recién hecho.</div></div>'
+    +'<div class="regla"><span class="ic"></span><div>Pedido mínimo <b>'+fmt(MINIMO)+'</b>.</div></div>'
+    +'<div class="regla"><span class="ic"></span><div>Domicilio por cuenta de la casa desde <b>'+fmt(UMBRAL)+'</b>. Debajo de ese monto te confirmamos el valor según tu zona.</div></div>'
+    +'<div class="regla"><span class="ic"></span><div>Cubrimos hasta <b>5 km</b> a la redonda. Si quedas por fuera, te ofrecemos recogida.</div></div>'
+    +'<div class="regla"><span class="ic"></span><div>Pide con tiempo: todo sale recién hecho.</div></div>'
     +'</div></div>');
   main.appendChild(intro);
 
@@ -369,7 +371,9 @@ function renderCarrito(){
       +'</div></div>'));
   });
   res.appendChild(el('<div class="total"><div class="lbl">Total de los platos</div><div class="val">'+fmt(t)+'</div></div>'));
-  bloqueDomicilio(res, t);
+  /* Debajo del mínimo, lo del domicilio gratis sobra y desanima: lo único que
+     importa es cuánto falta para que el pedido salga. Un aviso a la vez. */
+  if(!bajoMinimo()) bloqueDomicilio(res, t);
   main.appendChild(res);
 
   if(bajoMinimo()){
