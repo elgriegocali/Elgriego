@@ -1718,16 +1718,19 @@ function recetasBase(){
    r_kebab:{k:'r_kebab',n:'Kebab Thanasis (carne)',base:'carne_molida',baseG:1000,factor:1,lineas:[['carne_molida',1],['cebolla',0.15],['sal',0.01],['perejil',0.03],['comino',0.01],['pim_negra',0.004],['aceite_oliva',0.036],['ajo',0.01],['cilantro_m',0.003],['paprika',0.005],['cayena',0.002],['pan_rallado',0.06],['agua',0.04]]},
    r_mousaka:{k:'r_mousaka',n:'Mousaka',base:'carne_molida',baseG:123,factor:0.588,nota:'Pérdida por cocción 41,15%: 5.948 g crudo → 3.500 g cocido. Incluye bechamel y berenjena.',lineas:[['carne_molida',1],['cebolla',0.3252032520325203],['aceite_oliva',0.075],['ajo',0.008],['pasta_tomate',0.057],['tomate_lata',0.4],['vino_tinto',0.11],['sal',0.015],['pim_negra',0.004],['leche',1],['mantequilla',0.1],['harina',0.1],['parmesano',0.05],['huevo',0.04],['berenjena',2.4471544715447155]]},
    r_ens_griega:{k:'r_ens_griega',n:'Ensalada Griega',base:'tomate',baseG:100,factor:1,alerta:'Revisar ratios: 3 g de feta y 5 g de pepino para una porción de 250 g parece un error de coma decimal (¿0,30 y 0,51?).',lineas:[['tomate',1],['pepino',0.051],['cebolla_roja',0.028],['feta',0.03],['pim_blanca',0.002],['sal',0.004],['aceite_oliva',0.03],['oregano',0.005]]},
-   r_spanakopitakia:{k:'r_spanakopitakia',n:'Spanakopitakia',base:'espinaca',baseG:83,factor:0.5,lineas:[['espinaca',1],['puerro',2.44],['feta',0.36],['aceite_oliva',0.0741869918699187],['cebolla_roja',0.7951807228915663]]}
+   r_spanakopitakia:{k:'r_spanakopitakia',n:'Spanakopitakia',base:'espinaca',baseG:83,factor:0.5,lineas:[['espinaca',1],['puerro',2.44],['feta',0.36],['aceite_oliva',0.0741869918699187],['cebolla_roja',0.7951807228915663]]},
+   /* Va crudo dentro del pan, en los tres gyros y en el kebab: 30 g de tomate
+      y 15 g de cebolla roja por porción (confirmado por Haris, ago 2026). */
+   r_aderezo_gyros:{k:'r_aderezo_gyros',n:'Tomate y cebolla (gyros)',base:'tomate',baseG:30,factor:1,nota:'Rodajas crudas que van dentro del pan: 30 g de tomate + 15 g de cebolla roja por porción.',lineas:[['tomate',1],['cebolla_roja',0.5]]}
   };
 }
 
 function ensamblesBase(){
   return {
-   gyros_cerdo:{comp:[['r_cerdo',150,'base'],['r_pita',90],['r_tzatziki',55]]},
-   gyros_pollo:{comp:[['r_pollo',150,'base'],['r_pita',90],['r_tzatziki',55]]},
-   gyros_bondiola:{comp:[['r_bondiola',150,'base'],['r_pita',90],['r_tzatziki',55]]},
-   kebab:{comp:[['r_kebab',150],['r_pita',90],['r_tzatziki',55]]},
+   gyros_cerdo:{comp:[['r_cerdo',150,'base'],['r_pita',90],['r_tzatziki',55],['r_aderezo_gyros',45]]},
+   gyros_pollo:{comp:[['r_pollo',150,'base'],['r_pita',90],['r_tzatziki',55],['r_aderezo_gyros',45]]},
+   gyros_bondiola:{comp:[['r_bondiola',150,'base'],['r_pita',90],['r_tzatziki',55],['r_aderezo_gyros',45]]},
+   kebab:{comp:[['r_kebab',150],['r_pita',90],['r_tzatziki',55],['r_aderezo_gyros',45]]},
    pita:{comp:[['r_pita',450]]},
    tzatziki:{comp:[['r_tzatziki',200]]},
    mousaka:{comp:[['r_mousaka',350,'servido']],empaque:0,gas:0,labor:0},
@@ -1742,7 +1745,7 @@ var CFG_BASE={merma:3, metaMin:28, metaMax:30, empaque:0, gas:0, labor:0};
 
 var INGREDIENTES={}, RECETAS={}, ENSAMBLES={}, CFG={};
 
-var MODELO_V=3;
+var MODELO_V=4;
 function costeoModelo(){
   return {v:MODELO_V, ingredientes:INGREDIENTES, recetas:RECETAS, ensambles:ENSAMBLES, cfg:CFG};
 }
@@ -1773,6 +1776,21 @@ function costeoMigrar(d){
       delete ek.alerta;
     }
     d.v=3;
+  }
+  if(v<4){
+    /* faltaba el tomate y la cebolla que van crudos dentro del pan: estaban en
+       el producto pero no en el costeo. 30 g + 15 g por porción. */
+    if(d.recetas && !d.recetas.r_aderezo_gyros){
+      d.recetas.r_aderezo_gyros={k:'r_aderezo_gyros',n:'Tomate y cebolla (gyros)',base:'tomate',baseG:30,factor:1,nota:'Rodajas crudas que van dentro del pan: 30 g de tomate + 15 g de cebolla roja por porción.',lineas:[['tomate',1],['cebolla_roja',0.5]]};
+    }
+    ['gyros_cerdo','gyros_pollo','gyros_bondiola','kebab'].forEach(function(k){
+      var e=d.ensambles && d.ensambles[k];
+      if(!e || !e.comp) return;
+      /* respetar al usuario si ya lo agregó a mano */
+      var ya=e.comp.some(function(c){ return c[0]==='r_aderezo_gyros'; });
+      if(!ya) e.comp.push(['r_aderezo_gyros',45]);
+    });
+    d.v=4;
   }
   return d;
 }
