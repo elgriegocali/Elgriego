@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-title" content="El Griego" />
+<meta name="theme-color" content="#2742D8" />
+<meta name="description" content="Auténtica cocina griega en Cali. Arma tu pedido y lo cerramos por WhatsApp." />
+<meta property="og:title" content="El Griego Cali — Pide tu comida griega" />
+<meta property="og:description" content="Gyros, mousaka, ensaladas y pan pita hecho en casa. Arma tu pedido y lo cerramos por WhatsApp." />
+<meta property="og:type" content="website" />
+<link rel="apple-touch-icon" href="data:image/png;base64,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" />
+<title>El Griego Cali — Pide tu pedido</title>
+<style>
+:root{
+  --azul:#2742D8; --azul-osc:#16245F; --cielo:#8FD0E8;
+  --marmol:#F6F5F0; --carta:#FFFFFF; --tinta:#1A2238; --gris:#6B7280;
+  --oliva:#76814B; --oliva-osc:#4F5A2E; --oliva-suave:#EEF0E2;
+  --oro:#C9920E; --oro-suave:#FBF3DC;
+  --rojo:#C04A3A; --rojo-suave:#FBE9E5;
+  --azul-suave:#E8ECFC; --linea:#E5E3DB;
+  --wa:#1FAF54;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{min-height:100%;font-family:system-ui,-apple-system,sans-serif;background:var(--marmol);color:var(--tinta);font-size:15px;line-height:1.45}
+.shell{max-width:520px;margin:0 auto;width:100%;min-height:100vh;display:flex;flex-direction:column;background:var(--marmol)}
+.header{background:var(--azul);color:#fff;padding:18px 16px 14px}
+.header h1{font-size:23px;letter-spacing:.04em;display:flex;align-items:center;gap:9px;font-weight:700}
+.header .sub{font-size:11px;opacity:.85;letter-spacing:.14em;text-transform:uppercase;margin-top:3px}
+.eye{width:19px;height:19px;border-radius:50%;background:radial-gradient(circle at 50% 50%, #14213D 0 22%, #fff 22% 42%, var(--cielo) 42% 72%, #fff 72% 100%);flex:none;box-shadow:0 0 0 2px rgba(255,255,255,.35)}
+.greca{height:8px;background:repeating-linear-gradient(90deg,var(--azul) 0 4px,transparent 4px 8px),repeating-linear-gradient(0deg,var(--azul) 0 2px,transparent 2px 5px),var(--cielo);border-bottom:1px solid var(--linea)}
+.main{flex:1;padding:12px 12px 24px;display:flex;flex-direction:column;gap:12px}
+.card{background:var(--carta);border:1px solid var(--linea);border-radius:12px;padding:12px}
+.card h2{font-size:15px;font-weight:800;margin-bottom:8px;color:var(--azul-osc)}
+.intro{font-size:13px;color:var(--gris)}
+.reglas{display:flex;flex-direction:column;gap:5px;margin-top:9px}
+.regla{display:flex;gap:7px;align-items:flex-start;font-size:12.5px;color:var(--tinta)}
+.regla b{color:var(--azul-osc)}
+.regla .ic{color:var(--oliva);flex:none;font-weight:800}
+.seccion{margin-top:2px}
+.seccion h3{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--oliva-osc);margin:14px 2px 7px;display:flex;align-items:center;gap:8px}
+.seccion h3::after{content:"";flex:1;height:1px;background:var(--linea)}
+.plato{background:var(--carta);border:1px solid var(--linea);border-radius:12px;padding:11px 12px;display:flex;gap:10px;align-items:flex-start;margin-bottom:8px}
+.plato.on{border-color:var(--azul);box-shadow:0 0 0 2px var(--azul-suave)}
+.plato .txt{flex:1;min-width:0}
+.plato .nom{font-weight:800;font-size:14.5px;color:var(--azul-osc);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.plato .desc{font-size:12.5px;color:var(--gris);margin-top:3px}
+.plato .pie{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:9px}
+.plato .precio{font-weight:800;font-variant-numeric:tabular-nums;color:var(--tinta);font-size:15px}
+.plato .unidad{font-size:11px;color:var(--gris);font-weight:600}
+.chip{display:inline-flex;align-items:center;font-size:9.5px;font-weight:800;letter-spacing:.06em;padding:2px 7px;border-radius:999px;text-transform:uppercase;background:var(--oro-suave);color:var(--oro)}
+.chip.nuevo{background:var(--oliva-suave);color:var(--oliva-osc)}
+.qty{display:flex;align-items:center;gap:8px}
+.qty button{width:32px;height:32px;border-radius:9px;border:1px solid var(--linea);background:#fff;font-size:17px;font-weight:800;color:var(--azul);cursor:pointer;font-family:inherit;line-height:1}
+.qty button:disabled{opacity:.35;cursor:default}
+.qty span{min-width:20px;text-align:center;font-weight:800;font-variant-numeric:tabular-nums;font-size:15px}
+.agregar{border:1px solid var(--azul);background:#fff;color:var(--azul);border-radius:9px;padding:7px 14px;font-weight:800;font-size:12.5px;font-family:inherit;cursor:pointer}
+label.f{display:block;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--gris);margin:10px 0 3px}
+input.f,select.f,textarea.f{width:100%;border:1px solid var(--linea);border-radius:9px;padding:10px;font-family:inherit;font-size:16px;background:#fff;color:var(--tinta)}
+input.f:focus,select.f:focus,textarea.f:focus{outline:2px solid var(--cielo);border-color:var(--azul)}
+textarea.f{resize:vertical;min-height:64px}
+.dos{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pills{display:flex;gap:7px;margin-top:3px}
+.pill{flex:1;border:1px solid var(--linea);background:var(--carta);border-radius:10px;padding:10px 8px;font-size:13px;font-weight:800;color:var(--gris);cursor:pointer;font-family:inherit;text-align:center}
+.pill.on{background:var(--azul);border-color:var(--azul);color:#fff}
+.banner{background:var(--oliva-suave);border:1px solid #D8DCC2;color:var(--oliva-osc);border-radius:9px;padding:9px 10px;font-size:12.5px;font-weight:700}
+.aviso{background:var(--oro-suave);border:1px solid #EAD9A8;color:var(--oro);border-radius:9px;padding:9px 10px;font-size:12.5px;font-weight:700}
+.alerta{background:var(--rojo-suave);border:1px solid #F0CFC7;color:var(--rojo);border-radius:9px;padding:9px 10px;font-size:12.5px;font-weight:700}
+.bar{height:6px;border-radius:5px;background:#ECEBE4;overflow:hidden;margin-top:6px}
+.bar>i{display:block;height:100%;border-radius:5px;background:var(--oliva);transition:width .25s}
+.linea{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed var(--linea);font-size:13.5px}
+.linea:last-of-type{border-bottom:none}
+.linea .n{flex:1;min-width:0}
+.linea .m{font-variant-numeric:tabular-nums;font-weight:700}
+.total{display:flex;justify-content:space-between;align-items:baseline;margin-top:10px;padding-top:9px;border-top:1px solid var(--linea)}
+.total .lbl{font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--gris)}
+.total .val{font-size:21px;font-weight:800;font-variant-numeric:tabular-nums;color:var(--azul-osc)}
+.barra{position:fixed;left:0;right:0;bottom:0;z-index:40;display:flex;justify-content:center;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(180deg,rgba(246,245,240,0) 0%,var(--marmol) 38%)}
+.barra .in{width:100%;max-width:496px;background:var(--carta);border:1px solid var(--linea);border-radius:14px;box-shadow:0 6px 22px rgba(20,33,61,.14);padding:10px;display:flex;flex-direction:column;gap:8px}
+.barra .resumen{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;color:var(--gris);font-weight:700}
+.barra .resumen b{color:var(--azul-osc);font-size:16px;font-variant-numeric:tabular-nums}
+.btn{display:flex;align-items:center;justify-content:center;gap:7px;border:none;border-radius:11px;padding:13px 14px;font-family:inherit;font-weight:800;font-size:14px;cursor:pointer;letter-spacing:.02em;text-decoration:none;width:100%}
+.btn.primario{background:var(--azul);color:#fff}
+.btn.wa{background:var(--wa);color:#fff}
+.btn.fant{background:transparent;color:var(--gris);border:1px solid var(--linea);font-size:13px;padding:11px}
+.btn:disabled{opacity:.45;cursor:default}
+.vacio{text-align:center;padding:26px 12px;color:var(--gris);font-size:13px}
+.vacio .eye{margin:0 auto 10px;width:26px;height:26px}
+.pie-nota{text-align:center;font-size:11.5px;color:var(--gris);padding:6px 4px 0}
+.oculto{display:none}
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="header">
+    <h1><span class="eye"></span>EL GRIEGO</h1>
+    <div class="sub">Auténtica cocina griega · Cali</div>
+  </header>
+  <div class="greca"></div>
+  <div class="main" id="main"></div>
+</div>
+<div class="barra" id="barra"></div>
+
+<script>
+/* =========================================================================
+   EL GRIEGO CALI — App de pedidos para el cliente
+   Página pública. El pedido se arma acá y se cierra por WhatsApp.
+   Un solo archivo, sin dependencias. No enlazar nunca a index.html (app interna).
+   ========================================================================= */
+
+/* Número de WhatsApp Business al que llegan los pedidos (formato internacional). */
+var WHATSAPP = '573106531071';
+
+/* Reglas de operación de cara al cliente. */
+var MINIMO = 40000;    /* pedido mínimo */
+var UMBRAL = 150000;   /* desde acá el domicilio va por cuenta de la casa */
+
+/* Carta 2026. Los precios deben coincidir con PRODUCTOS en index.html.
+   Si cambia un precio allá, cambiarlo también acá. */
+var CARTA = [
+ {seccion:'Gyros y kebab', items:[
+   {key:'gyros_cerdo', nombre:'Gyros de Cerdo', precio:24000, unidad:'por gyro', sello:'Más pedido',
+    desc:'Brazo de cerdo adobado con orégano y tomillo, dorado despacio, en pan pita con tzatziki fresco.'},
+   {key:'gyros_pollo', nombre:'Gyros de Pollo', precio:24000, unidad:'por gyro',
+    desc:'Pollo marinado en limón, ajo y orégano, en pan pita recién horneado con tzatziki.'},
+   {key:'gyros_bondiola', nombre:'Gyros de Bondiola', precio:24000, unidad:'por gyro',
+    desc:'Bondiola de cerdo marinada en vino blanco y especias. Jugosa, con carácter, en pan pita con tzatziki.'},
+   {key:'kebab', nombre:'Kebab Estilo Thanasis', precio:24000, unidad:'por porción', sello:'Más pedido',
+    desc:'Carne molida con perejil, comino y cebolla, a la parrilla. Como en las tabernas de Atenas.'}
+ ]},
+ {seccion:'Del horno', items:[
+   {key:'mousaka', nombre:'Mousaka', precio:30000, unidad:'350 g',
+    desc:'Capas de berenjena, carne al tomate y bechamel gratinada. El plato de domingo en casa griega.'},
+   {key:'pastitsio', nombre:'Pastitsio', precio:30000, unidad:'380 g',
+    desc:'Pasta gruesa con carne al tomate y bechamel dorada al horno. Rinde y reconforta.'},
+   {key:'spanako', nombre:'Spanakopitakia', precio:22000, unidad:'6 empanadas', sello:'Nuevo',
+    desc:'Seis empanaditas de hojaldre filo rellenas de espinaca y puerro. Crujientes por fuera, suaves por dentro.'},
+   {key:'tiro', nombre:'Tiropitakia', precio:22000, unidad:'6 empanadas', sello:'Nuevo',
+    desc:'Seis empanaditas de hojaldre filo rellenas de queso. Las que se acaban primero.'},
+   {key:'praso', nombre:'Prasopitakia', precio:24000, unidad:'6 pastelitos',
+    desc:'Seis pastelitos de hojaldre filo con puerro confitado. Suaves, entre lo dulce y lo salado.'}
+ ]},
+ {seccion:'Mezedes y ensaladas', items:[
+   {key:'gambas', nombre:'Gambas Saganaki', precio:34000, unidad:'250 g',
+    desc:'Camarones al horno en salsa de tomate con feta derretido. Para mojar pan pita hasta el final.'},
+   {key:'ens_griega', nombre:'Ensalada Griega', precio:20000, unidad:'250 g',
+    desc:'Tomate, pepino, cebolla roja, feta y orégano con buen aceite de oliva. Sin lechuga, como en Grecia.'},
+   {key:'dakos', nombre:'Ensalada Dakos', precio:20000, unidad:'250 g',
+    desc:'Pan de cebada crocante con tomate rallado, queso fresco y orégano. La entrada de Creta.'},
+   {key:'tzatziki', nombre:'Tzatziki', precio:18000, unidad:'200 g',
+    desc:'Yogur, pepino, ajo y aceite de oliva. Fresco, acompaña todo lo de la mesa.'},
+   {key:'pita', nombre:'Pan Pita', precio:12500, unidad:'5 panes',
+    desc:'Cinco panes pita amasados y horneados por nosotros el mismo día.'}
+ ]}
+];
+
+/* ---------------- utilidades ---------------- */
+function fmt(n){ return Math.round(n).toLocaleString('es-CO'); }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function plato(k){
+  for(var i=0;i<CARTA.length;i++){
+    var its=CARTA[i].items;
+    for(var j=0;j<its.length;j++) if(its[j].key===k) return its[j];
+  }
+  return null;
+}
+function ls(){ try{ var t='__t'; localStorage.setItem(t,'1'); localStorage.removeItem(t); return true; }catch(e){ return false; } }
+var HAY_LS = ls();
+function guardar(clave, valor){ if(!HAY_LS) return; try{ localStorage.setItem(clave, JSON.stringify(valor)); }catch(e){} }
+function leer(clave, porDefecto){
+  if(!HAY_LS) return porDefecto;
+  try{ var v=localStorage.getItem(clave); return v? JSON.parse(v) : porDefecto; }catch(e){ return porDefecto; }
+}
+
+/* ---------------- estado ---------------- */
+var carrito = leer('elgriego_carrito', {}) || {};
+var datos = leer('elgriego_cliente', {}) || {};
+if(!datos.tipo) datos.tipo = 'Domicilio';
+var vista = 'carta';   /* 'carta' | 'datos' */
+var intento = false;   /* true cuando ya se intentó enviar: recién ahí se muestran los errores */
+
+var main = document.getElementById('main');
+var barra = document.getElementById('barra');
+
+function unidades(){ var n=0; for(var k in carrito) n+=carrito[k]; return n; }
+function subtotal(){
+  var t=0;
+  for(var k in carrito){ var p=plato(k); if(p) t += p.precio*carrito[k]; }
+  return t;
+}
+function lineas(){
+  var out=[];
+  CARTA.forEach(function(s){
+    s.items.forEach(function(p){ if(carrito[p.key]>0) out.push({p:p, qty:carrito[p.key]}); });
+  });
+  return out;
+}
+function sumar(k, delta){
+  var n=(carrito[k]||0)+delta;
+  if(n<=0) delete carrito[k]; else carrito[k]=Math.min(n, 99);
+  guardar('elgriego_carrito', carrito);
+  render();
+}
+function vaciar(){
+  if(!confirm('¿Vaciar el pedido?')) return;
+  carrito={}; guardar('elgriego_carrito', carrito); vista='carta'; intento=false; render();
+  window.scrollTo(0,0);
+}
+
+/* ---------------- validación ---------------- */
+function faltantes(){
+  var f=[];
+  if(!(datos.nombre||'').trim()) f.push('nombre');
+  if((datos.tel||'').replace(/\D/g,'').length<7) f.push('tel');
+  if(datos.tipo==='Domicilio' && !(datos.direccion||'').trim()) f.push('direccion');
+  if(datos.tipo==='Domicilio' && !(datos.barrio||'').trim()) f.push('barrio');
+  if(!(datos.cuando||'').trim()) f.push('cuando');
+  return f;
+}
+function bajoMinimo(){ return subtotal() < MINIMO; }
+
+/* ---------------- mensaje de WhatsApp ---------------- */
+function mensaje(){
+  var t = subtotal();
+  var txt = '¡Hola! 💙 Quiero hacer un pedido en El Griego.\n\n';
+  lineas().forEach(function(l){
+    txt += '• ' + l.qty + '× ' + l.p.nombre + ' — ' + fmt(l.p.precio*l.qty) + '\n';
+  });
+  txt += '\nTotal de los platos: ' + fmt(t) + '\n';
+  if(datos.tipo==='Domicilio'){
+    txt += t>=UMBRAL ? 'Domicilio: por cuenta de la casa 🎉\n' : 'Domicilio: me lo confirman según mi zona\n';
+  }
+  txt += '\n';
+  txt += 'Entrega: ' + datos.tipo + '\n';
+  txt += 'Nombre: ' + (datos.nombre||'').trim() + '\n';
+  txt += 'WhatsApp: ' + (datos.tel||'').trim() + '\n';
+  if(datos.tipo==='Domicilio'){
+    txt += 'Dirección: ' + (datos.direccion||'').trim() + '\n';
+    txt += 'Barrio: ' + (datos.barrio||'').trim() + '\n';
+  }
+  txt += 'Para: ' + (datos.cuando||'').trim() + '\n';
+  if((datos.notas||'').trim()) txt += 'Notas: ' + (datos.notas||'').trim() + '\n';
+  txt += '\nQuedo pendiente de la confirmación. ¡Gracias! 🇬🇷';
+  return txt;
+}
+function enviar(){
+  intento = true;
+  if(bajoMinimo() || faltantes().length){
+    render();
+    /* Llevar al cliente a lo que le falta, que puede haber quedado fuera de pantalla. */
+    var foco = document.querySelector('.alerta') || document.querySelector('#main input[style]');
+    if(foco && foco.scrollIntoView) foco.scrollIntoView({block:'center'});
+    return;
+  }
+  var url = 'https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent(mensaje());
+  guardar('elgriego_cliente', datos);
+  window.open(url, '_blank');
+}
+
+/* ---------------- render ---------------- */
+function el(html){ var d=document.createElement('div'); d.innerHTML=html; return d.firstElementChild; }
+
+function render(){
+  main.innerHTML='';
+  if(vista==='carta') renderCarta(); else renderDatos();
+  renderBarra();
+}
+
+function renderCarta(){
+  var intro = el(
+    '<div class="card">'
+    +'<h2>Arma tu pedido</h2>'
+    +'<div class="intro">Cocinamos por encargo, plato por plato. Escoge lo tuyo, déjanos tus datos y cerramos el pedido por WhatsApp.</div>'
+    +'<div class="reglas">'
+    +'<div class="regla"><span class="ic">◆</span><div>Pedido mínimo <b>'+fmt(MINIMO)+'</b>.</div></div>'
+    +'<div class="regla"><span class="ic">◆</span><div>Domicilio por cuenta de la casa desde <b>'+fmt(UMBRAL)+'</b>. Debajo de ese monto te confirmamos el valor según tu zona.</div></div>'
+    +'<div class="regla"><span class="ic">◆</span><div>Cubrimos hasta <b>5 km</b> a la redonda. Si quedas por fuera, te ofrecemos recogida.</div></div>'
+    +'<div class="regla"><span class="ic">◆</span><div>Pide con tiempo: todo sale recién hecho.</div></div>'
+    +'</div></div>');
+  main.appendChild(intro);
+
+  CARTA.forEach(function(s){
+    var sec = el('<div class="seccion"></div>');
+    sec.appendChild(el('<h3>'+esc(s.seccion)+'</h3>'));
+    s.items.forEach(function(p){
+      var q = carrito[p.key]||0;
+      var sello = p.sello ? '<span class="chip'+(p.sello==='Nuevo'?' nuevo':'')+'">'+esc(p.sello)+'</span>' : '';
+      var control = q>0
+        ? '<div class="qty"><button data-menos="'+p.key+'" aria-label="Quitar uno">−</button><span>'+q+'</span><button data-mas="'+p.key+'" aria-label="Agregar uno">+</button></div>'
+        : '<button class="agregar" data-mas="'+p.key+'">Agregar</button>';
+      var card = el(
+        '<div class="plato'+(q>0?' on':'')+'">'
+        +'<div class="txt">'
+        +'<div class="nom">'+esc(p.nombre)+sello+'</div>'
+        +'<div class="desc">'+esc(p.desc)+'</div>'
+        +'<div class="pie">'
+        +'<div><div class="precio">'+fmt(p.precio)+'</div><div class="unidad">'+esc(p.unidad)+'</div></div>'
+        + control
+        +'</div></div></div>');
+      sec.appendChild(card);
+    });
+    main.appendChild(sec);
+  });
+
+  main.appendChild(el('<div class="pie-nota">Los precios están en pesos colombianos.</div>'));
+
+  main.querySelectorAll('[data-mas]').forEach(function(b){
+    b.onclick=function(){ sumar(b.getAttribute('data-mas'), 1); };
+  });
+  main.querySelectorAll('[data-menos]').forEach(function(b){
+    b.onclick=function(){ sumar(b.getAttribute('data-menos'), -1); };
+  });
+}
+
+function renderDatos(){
+  var t = subtotal();
+  var f = intento ? faltantes() : [];
+  function malo(campo){ return f.indexOf(campo)>=0 ? ' style="border-color:var(--rojo)"' : ''; }
+
+  /* Resumen del pedido */
+  var res = el('<div class="card"><h2>Tu pedido</h2></div>');
+  lineas().forEach(function(l){
+    res.appendChild(el('<div class="linea"><div class="n">'+l.qty+'× '+esc(l.p.nombre)+'</div><div class="m">'+fmt(l.p.precio*l.qty)+'</div></div>'));
+  });
+  res.appendChild(el('<div class="total"><div class="lbl">Total de los platos</div><div class="val">'+fmt(t)+'</div></div>'));
+  if(datos.tipo==='Domicilio'){
+    if(t>=UMBRAL){
+      res.appendChild(el('<div class="banner" style="margin-top:10px">🎉 El domicilio va por cuenta de la casa.</div>'));
+    }else{
+      var falta = UMBRAL - t;
+      res.appendChild(el('<div class="aviso" style="margin-top:10px">Te faltan '+fmt(falta)+' para que el domicilio vaya por nuestra cuenta.</div>'));
+      res.appendChild(el('<div class="bar"><i style="width:'+Math.min(100, t/UMBRAL*100).toFixed(1)+'%"></i></div>'));
+      res.appendChild(el('<div class="pie-nota" style="text-align:left;padding:6px 0 0">Debajo de '+fmt(UMBRAL)+' te confirmamos el valor del domicilio por WhatsApp, según tu zona.</div>'));
+    }
+  }
+  main.appendChild(res);
+
+  /* Datos de entrega */
+  var form = el('<div class="card"><h2>Tus datos</h2></div>');
+  form.appendChild(el('<label class="f">Cómo lo quieres recibir</label>'));
+  form.appendChild(el(
+    '<div class="pills">'
+    +'<button class="pill'+(datos.tipo==='Domicilio'?' on':'')+'" data-tipo="Domicilio">Domicilio</button>'
+    +'<button class="pill'+(datos.tipo==='Recoger'?' on':'')+'" data-tipo="Recoger">Recoger</button>'
+    +'</div>'));
+  form.appendChild(el('<label class="f">Tu nombre</label>'));
+  form.appendChild(el('<input class="f" id="d-nombre" placeholder="Nombre y apellido" autocomplete="name" value="'+esc(datos.nombre||'')+'"'+malo('nombre')+'>'));
+  form.appendChild(el('<label class="f">WhatsApp</label>'));
+  form.appendChild(el('<input class="f" id="d-tel" placeholder="300 123 4567" inputmode="tel" autocomplete="tel" value="'+esc(datos.tel||'')+'"'+malo('tel')+'>'));
+  if(datos.tipo==='Domicilio'){
+    form.appendChild(el('<label class="f">Dirección</label>'));
+    form.appendChild(el('<input class="f" id="d-direccion" placeholder="Calle, número, apto / torre" autocomplete="street-address" value="'+esc(datos.direccion||'')+'"'+malo('direccion')+'>'));
+    form.appendChild(el('<label class="f">Barrio</label>'));
+    form.appendChild(el('<input class="f" id="d-barrio" placeholder="Ciudad Jardín, Pance, Ciudad Capri…" value="'+esc(datos.barrio||'')+'"'+malo('barrio')+'>'));
+  }
+  form.appendChild(el('<label class="f">¿Para cuándo?</label>'));
+  form.appendChild(el('<input class="f" id="d-cuando" placeholder="Hoy 7:00 pm · Sábado al almuerzo…" value="'+esc(datos.cuando||'')+'"'+malo('cuando')+'>'));
+  form.appendChild(el('<label class="f">Algo que debamos saber (opcional)</label>'));
+  form.appendChild(el('<textarea class="f" id="d-notas" placeholder="Alergias, sin cebolla, punto de referencia…">'+esc(datos.notas||'')+'</textarea>'));
+  main.appendChild(form);
+
+  if(intento && bajoMinimo()){
+    main.appendChild(el('<div class="alerta">El pedido mínimo es de '+fmt(MINIMO)+'. Te faltan '+fmt(MINIMO-t)+'.</div>'));
+  }else if(intento && f.length){
+    main.appendChild(el('<div class="alerta">Nos falta un dato para poder atenderte. Revisa los campos marcados.</div>'));
+  }
+
+  main.appendChild(el('<button class="btn fant" id="volver">← Seguir agregando</button>'));
+  main.appendChild(el('<div class="pie-nota">Al enviar se abre WhatsApp con tu pedido ya escrito. Te confirmamos disponibilidad y el valor del domicilio por ahí mismo.</div>'));
+
+  /* eventos */
+  form.querySelectorAll('[data-tipo]').forEach(function(b){
+    b.onclick=function(){ datos.tipo=b.getAttribute('data-tipo'); guardar('elgriego_cliente',datos); render(); };
+  });
+  var campos={nombre:'d-nombre', tel:'d-tel', direccion:'d-direccion', barrio:'d-barrio', cuando:'d-cuando', notas:'d-notas'};
+  Object.keys(campos).forEach(function(k){
+    var input=document.getElementById(campos[k]); if(!input) return;
+    input.oninput=function(){ datos[k]=input.value; guardar('elgriego_cliente', datos); };
+  });
+  document.getElementById('volver').onclick=function(){ vista='carta'; render(); window.scrollTo(0,0); };
+}
+
+/* La barra es fija y tapa el final de la página: se le deja abajo el espacio que ocupa. */
+function ajustarEspacio(){
+  var alto = barra.offsetHeight || 0;
+  main.style.paddingBottom = (alto ? alto + 16 : 24) + 'px';
+}
+
+function renderBarra(){
+  var n = unidades(), t = subtotal();
+  if(n===0){
+    barra.innerHTML='';
+    barra.style.display='none';
+    ajustarEspacio();
+    return;
+  }
+  barra.style.display='flex';
+  var resumen = '<div class="resumen"><span>'+n+' '+(n===1?'plato':'platos')+'</span><b>'+fmt(t)+'</b></div>';
+  if(vista==='carta'){
+    var aviso='';
+    if(bajoMinimo()) aviso='<div class="pie-nota" style="padding:0">Mínimo '+fmt(MINIMO)+' — te faltan '+fmt(MINIMO-t)+'</div>';
+    else if(datos.tipo==='Domicilio' && t<UMBRAL) aviso='<div class="pie-nota" style="padding:0">Te faltan '+fmt(UMBRAL-t)+' para el domicilio por cuenta de la casa</div>';
+    barra.innerHTML='<div class="in">'+resumen+aviso
+      +'<button class="btn primario" id="b-continuar">Continuar</button></div>';
+    document.getElementById('b-continuar').onclick=function(){
+      vista='datos'; intento=false; render(); window.scrollTo(0,0);
+    };
+  }else{
+    barra.innerHTML='<div class="in">'+resumen
+      +'<button class="btn wa" id="b-enviar">Enviar pedido por WhatsApp</button>'
+      +'<button class="btn fant" id="b-vaciar">Vaciar pedido</button></div>';
+    document.getElementById('b-enviar').onclick=enviar;
+    document.getElementById('b-vaciar').onclick=vaciar;
+  }
+  ajustarEspacio();
+}
+
+window.addEventListener('resize', ajustarEspacio);
+
+render();
+</script>
+</body>
+</html>
