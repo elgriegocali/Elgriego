@@ -41,12 +41,17 @@ html,body{min-height:100%;font-family:system-ui,-apple-system,sans-serif;backgro
 .seccion{margin-top:2px}
 .seccion h3{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--oliva-osc);margin:14px 2px 7px;display:flex;align-items:center;gap:8px}
 .seccion h3::after{content:"";flex:1;height:1px;background:var(--linea)}
-.plato{background:var(--carta);border:1px solid var(--linea);border-radius:12px;padding:11px 12px;display:flex;gap:10px;align-items:flex-start;margin-bottom:8px}
+.plato{background:var(--carta);border:1px solid var(--linea);border-radius:12px;padding:11px 12px;display:flex;flex-direction:column;gap:10px;margin-bottom:8px}
 .plato.on{border-color:var(--azul);box-shadow:0 0 0 2px var(--azul-suave)}
+.plato .cabeza{display:flex;gap:11px;align-items:flex-start}
 .plato .txt{flex:1;min-width:0}
 .plato .nom{font-weight:800;font-size:14.5px;color:var(--azul-osc);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .plato .desc{font-size:12.5px;color:var(--gris);margin-top:3px}
-.plato .pie{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:9px}
+.plato .pie{display:flex;align-items:center;justify-content:space-between;gap:10px}
+/* La foto es opcional: si el archivo no existe, se quita y la tarjeta queda como
+   estaba, con el texto a todo el ancho. Ver fotos/LEEME.md. */
+.foto{width:96px;height:96px;border-radius:10px;overflow:hidden;flex:none;background:#ECEBE4}
+.foto img{width:100%;height:100%;object-fit:cover;display:block}
 .plato .precio{font-weight:800;font-variant-numeric:tabular-nums;color:var(--tinta);font-size:15px}
 .plato .unidad{font-size:11px;color:var(--gris);font-weight:600}
 .chip{display:inline-flex;align-items:center;font-size:9.5px;font-weight:800;letter-spacing:.06em;padding:2px 7px;border-radius:999px;text-transform:uppercase;background:var(--oro-suave);color:var(--oro)}
@@ -292,13 +297,22 @@ function renderCarta(){
         : '<button class="agregar" data-mas="'+p.key+'">Agregar</button>';
       var card = el(
         '<div class="plato'+(q>0?' on':'')+'">'
+        +'<div class="cabeza">'
+        +'<div class="foto"><img src="fotos/'+p.key+'.jpg" alt="'+esc(p.nombre)+'" loading="lazy" decoding="async"></div>'
         +'<div class="txt">'
         +'<div class="nom">'+esc(p.nombre)+sello+'</div>'
         +'<div class="desc">'+esc(p.desc)+'</div>'
+        +'</div></div>'
         +'<div class="pie">'
         +'<div><div class="precio">'+fmt(p.precio)+'</div><div class="unidad">'+esc(p.unidad)+'</div></div>'
         + control
-        +'</div></div></div>');
+        +'</div></div>');
+      /* Sin foto no se muestra un ícono roto: se elimina el hueco y ya. */
+      var img = card.querySelector('.foto img');
+      img.onerror = function(){
+        var caja = card.querySelector('.foto');
+        if(caja && caja.parentNode) caja.parentNode.removeChild(caja);
+      };
       sec.appendChild(card);
     });
     main.appendChild(sec);
