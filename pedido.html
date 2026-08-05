@@ -120,6 +120,7 @@ textarea.f{resize:vertical;min-height:64px}
 </div>
 <div class="barra" id="barra"></div>
 
+<script src="precios.js"></script>
 <script>
 /* =========================================================================
    EL GRIEGO CALI — App de pedidos para el cliente
@@ -173,6 +174,18 @@ var CARTA = [
     desc:'Cinco panes pita amasados y horneados por nosotros el mismo día.'}
  ]}
 ];
+
+/* Los precios publicados (precios.js) mandan sobre los de la carta de arriba.
+   Es lo que evita que esta página y la app interna se desincronicen. Si el
+   archivo no cargó, quedan los de arriba y la carta sigue funcionando. */
+if(typeof PRECIOS!=='undefined' && PRECIOS){
+  CARTA.forEach(function(s){
+    s.items.forEach(function(p){
+      var v=PRECIOS[p.key];
+      if(v!=null && !isNaN(v) && v>0) p.precio=v;
+    });
+  });
+}
 
 /* ---------------- utilidades ---------------- */
 function fmt(n){ return Math.round(n).toLocaleString('es-CO'); }

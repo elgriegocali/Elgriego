@@ -97,6 +97,7 @@ hr.s{border:none;border-top:1px dashed var(--linea);margin:8px 0}
   </nav>
 </div>
 
+<script src="precios.js"></script>
 <script>
 /* ================= DATOS ================= */
 var PRODUCTOS = [
@@ -115,6 +116,16 @@ var PRODUCTOS = [
  {key:'pita',         nombre:'Pan Pita',              precio:12500, unidad:'5 panes',       fc:20.8, clase:'Caballo de batalla'},
  {key:'tzatziki',     nombre:'Tzatziki',              precio:18000, unidad:'200 g',         fc:22.4, clase:'Caballo de batalla', nota:'Candidato a 20.000'}
 ];
+/* Los precios publicados (precios.js) mandan sobre los que trae esta lista, para
+   que la app interna y la carta del cliente no se puedan desincronizar. Si el
+   archivo no cargó, se quedan los de arriba y la app sigue funcionando igual. */
+var PRECIOS_PUBLICADOS = (typeof PRECIOS!=='undefined' && PRECIOS) ? PRECIOS : null;
+if(PRECIOS_PUBLICADOS){
+  PRODUCTOS.forEach(function(p){
+    var v=PRECIOS_PUBLICADOS[p.key];
+    if(v!=null && !isNaN(v) && v>0) p.precio=v;
+  });
+}
 var FC_ESTIMADO = 28;
 /* Ventas reales 2026 por mes (unidades) — base histórica de la matriz de ingeniería de menú.
    Los pedidos completados en la app se suman encima, por mes de entrega. */
@@ -868,7 +879,7 @@ function renderMenu(){
       +'<div class="muted small">'+fmt(p.precio)+' · '+esc(p.unidad)+(p.nota?' · '+esc(p.nota):'')+'</div>'
       +'<div style="margin-top:3px">'
       +(p.precioBase!=null && p.precio!==p.precioBase
-        ? '<span class="chip neutro">precio editado · antes '+fmt(p.precioBase)+'</span> ' : '')
+        ? '<span class="chip warn">solo en este equipo · el cliente ve '+fmt(p.precioBase)+'</span> ' : '')
       +(p.clase?'<span class="chip '+chipClase(p.clase)+'">'+esc(p.clase)+'</span> ':'')
       +(p.fc!=null
         ? '<span class="chip '+claseFC(p.fc)+'">FC '+p.fc+'%</span>'
@@ -895,6 +906,7 @@ function renderMenu(){
       +'</div>'
       +'<div class="muted small" data-p-preview style="margin-top:4px"></div>'
       +'<div class="muted small" style="margin-top:4px">Los pedidos ya registrados conservan el precio con el que se cobraron.</div>'
+      +'<div class="aviso" style="margin-top:6px">Esto cambia el precio <b>solo en este equipo</b>, para simular. Para que el cliente lo vea hay que cambiarlo en <b>precios.js</b> y publicar.</div>'
       +'</div>');
     wrap.appendChild(formP);
 
