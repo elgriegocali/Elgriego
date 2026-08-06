@@ -144,8 +144,6 @@ var CARTA = [
     desc:'Cerdo asado despacio en nuestro pan pita hecho a mano, con tomate fresco, cebolla roja y tzatziki de la casa.'},
    {key:'gyros_pollo', nombre:'Gyros de Pollo', precio:24000, unidad:'por gyro',
     desc:'Pollo asado despacio en nuestro pan pita hecho a mano, con tomate fresco, cebolla roja y tzatziki de la casa.'},
-   {key:'gyros_bondiola', nombre:'Gyros de Bondiola', precio:24000, unidad:'por gyro',
-    desc:'Bondiola de cerdo asada despacio en nuestro pan pita hecho a mano, con tomate fresco, cebolla roja y tzatziki de la casa.'},
    {key:'kebab', nombre:'Kebab Estilo Thanasis', precio:24000, unidad:'por porción', sello:'Más pedido',
     desc:'Inspirado en la comida callejera de Atenas: kebab de res a la parrilla en pan pita hecho a mano, con tomate fresco, cebolla roja y nuestra salsa tzatziki.'}
  ]},
@@ -207,6 +205,14 @@ function leer(clave, porDefecto){
 
 /* ---------------- estado ---------------- */
 var carrito = leer('elgriego_carrito', {}) || {};
+/* Si un plato sale de la carta, hay clientes con él guardado en el carrito de
+   antes. Se saca al cargar: si no, la barra contaba platos que ya no se pueden
+   pedir y el total no cuadraba con lo que se veía en pantalla. */
+(function limpiarCarrito(){
+  var cambio=false;
+  for(var k in carrito){ if(!plato(k)){ delete carrito[k]; cambio=true; } }
+  if(cambio) guardar('elgriego_carrito', carrito);
+})();
 var datos = leer('elgriego_cliente', {}) || {};
 if(!datos.tipo) datos.tipo = 'Domicilio';
 var vista = 'carta';   /* 'carta' | 'datos' */
@@ -215,7 +221,7 @@ var intento = false;   /* true cuando ya se intentó enviar: recién ahí se mue
 var main = document.getElementById('main');
 var barra = document.getElementById('barra');
 
-function unidades(){ var n=0; for(var k in carrito) n+=carrito[k]; return n; }
+function unidades(){ var n=0; for(var k in carrito){ if(plato(k)) n+=carrito[k]; } return n; }
 function subtotal(){
   var t=0;
   for(var k in carrito){ var p=plato(k); if(p) t += p.precio*carrito[k]; }
