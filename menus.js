@@ -12,26 +12,25 @@
    cambiados en los dos lados. Si el archivo no carga, cada página se queda
    con lo que trae en su propio código y nada se rompe.
    ========================================================================= */
-/* `para` es opcional: si se llena ("Para 4 personas"), sale en la tarjeta.
-   Está vacío a propósito — falta que Haris confirme para cuánta gente rinde
-   cada menú. No inventar ese dato: el cliente pide contando con él. */
+/* `para` sale en la tarjeta y es lo primero que mira el cliente que no sabe
+   qué pedir. Confirmado por Haris en ago 2026 — no cambiarlo a ojo. */
 var MENUS = [
   {
     nombre:'Familiar 1',
     desc:'2 Gyros · Ensalada Griega · Pan Pita',
-    para:'',
+    para:'Para 2 personas',
     items:[{key:'gyros_cerdo',qty:2},{key:'ens_griega',qty:1},{key:'pita',qty:1}]
   },
   {
     nombre:'Familiar 2',
     desc:'2 Mousaka · Ensalada Griega · Spanakopitakia · Tzatziki · Pan Pita',
-    para:'',
+    para:'Para 3 o 4 personas',
     items:[{key:'mousaka',qty:2},{key:'ens_griega',qty:1},{key:'spanako',qty:1},{key:'tzatziki',qty:1},{key:'pita',qty:1}]
   },
   {
     nombre:'Familiar 3',
     desc:'3 Mousaka · 2 Kebab · Ensalada Griega · Spanakopitakia',
-    para:'',
+    para:'Para 5 o 6 personas',
     items:[{key:'mousaka',qty:3},{key:'kebab',qty:2},{key:'ens_griega',qty:1},{key:'spanako',qty:1}]
   }
 ];
