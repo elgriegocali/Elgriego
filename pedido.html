@@ -43,6 +43,13 @@ html,body{min-height:100%;font-family:system-ui,-apple-system,sans-serif;backgro
 .seccion{margin-top:2px}
 .seccion h3{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--oliva-osc);margin:14px 2px 7px;display:flex;align-items:center;gap:8px}
 .seccion h3::after{content:"";flex:1;height:1px;background:var(--linea)}
+.menu-c{background:var(--oliva-suave);border:1px solid #D8DCC2;border-radius:12px;padding:12px;margin-bottom:8px}
+.menu-c .nom{font-weight:800;font-size:15px;color:var(--oliva-osc)}
+.menu-c .desc{font-size:12.5px;color:var(--tinta);margin-top:3px}
+.menu-c .para{font-size:11.5px;color:var(--gris);margin-top:3px;font-weight:700}
+.menu-c .pie{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px}
+.menu-c .precio{font-weight:800;font-size:16px;font-variant-numeric:tabular-nums;color:var(--oliva-osc)}
+.menu-c .agregar{border-color:var(--oliva);color:var(--oliva-osc)}
 .plato{background:var(--carta);border:1px solid var(--linea);border-radius:12px;padding:11px 12px;display:flex;flex-direction:column;gap:10px;margin-bottom:8px}
 .plato.on{border-color:var(--azul);box-shadow:0 0 0 2px var(--azul-suave)}
 .plato .cabeza{display:flex;gap:11px;align-items:flex-start}
@@ -121,6 +128,7 @@ textarea.f{resize:vertical;min-height:64px}
 <div class="barra" id="barra"></div>
 
 <script src="precios.js"></script>
+<script src="menus.js"></script>
 <script>
 /* =========================================================================
    EL GRIEGO CALI — App de pedidos para el cliente
@@ -204,7 +212,15 @@ function leer(clave, porDefecto){
 }
 
 /* ---------------- estado ---------------- */
+/* Menús para compartir. Vienen de menus.js; si no cargó, no se muestra la
+   sección y la carta funciona igual. */
+var MENUS_COMPARTIR = (typeof MENUS!=='undefined' && MENUS) ? MENUS : [];
+
 var carrito = leer('elgriego_carrito', {}) || {};
+/* Qué menús se usaron para armar el pedido. Los platos se agregan sueltos y el
+   cliente los puede ajustar, así que esto es solo para contarle a la cocina de
+   dónde salió el pedido — las cantidades que mandan son las del carrito. */
+var menusUsados = leer('elgriego_menus', {}) || {};
 /* Si un plato sale de la carta, hay clientes con él guardado en el carrito de
    antes. Se saca al cargar: si no, la barra contaba platos que ya no se pueden
    pedir y el total no cuadraba con lo que se veía en pantalla. */
@@ -242,8 +258,31 @@ function sumar(k, delta){
 }
 function vaciar(){
   if(!confirm('¿Vaciar el pedido?')) return;
-  carrito={}; guardar('elgriego_carrito', carrito); vista='carta'; intento=false; render();
+  carrito={}; guardar('elgriego_carrito', carrito);
+  menusUsados={}; guardar('elgriego_menus', menusUsados);
+  vista='carta'; intento=false; render();
   window.scrollTo(0,0);
+}
+
+/* Agrega de una todos los platos de un menú. Quedan sueltos en el carrito:
+   el cliente puede quitar el pan pita si no lo quiere, sin quedar atrapado. */
+function agregarMenu(nombre){
+  var m=null;
+  MENUS_COMPARTIR.forEach(function(x){ if(x.nombre===nombre) m=x; });
+  if(!m) return;
+  m.items.forEach(function(it){
+    if(!plato(it.key)) return;                 /* si salió de la carta, se ignora */
+    carrito[it.key]=(carrito[it.key]||0)+it.qty;
+  });
+  menusUsados[nombre]=(menusUsados[nombre]||0)+1;
+  guardar('elgriego_carrito', carrito);
+  guardar('elgriego_menus', menusUsados);
+  vista='carrito'; render(); window.scrollTo(0,0);
+}
+function totalMenu(m){
+  var t=0;
+  m.items.forEach(function(it){ var p=plato(it.key); if(p) t+=p.precio*it.qty; });
+  return t;
 }
 
 /* ---------------- validación ---------------- */
@@ -265,6 +304,9 @@ function mensaje(){
   lineas().forEach(function(l){
     txt += '• ' + l.qty + '× ' + l.p.nombre + ' — ' + fmt(l.p.precio*l.qty) + '\n';
   });
+  var usados=[];
+  for(var n in menusUsados){ if(menusUsados[n]>0) usados.push(n + (menusUsados[n]>1 ? ' ×'+menusUsados[n] : '')); }
+  if(usados.length) txt += '\n(Armado desde el ' + usados.join(' y el ') + ')\n';
   txt += '\nTotal de los platos: ' + fmt(t) + '\n';
   if(datos.tipo==='Domicilio'){
     txt += t>=UMBRAL ? 'Domicilio: por cuenta de la casa 🎉\n' : 'Domicilio: me lo confirman según mi zona\n';
@@ -321,6 +363,31 @@ function renderCarta(){
     +'<div class="regla"><span class="ic"></span><div>Pide con tiempo: todo sale recién hecho.</div></div>'
     +'</div></div>');
   main.appendChild(intro);
+
+  /* Menús para compartir: resuelven la duda de "¿qué pido para varios?".
+     Van a precio pleno — no son un descuento y no se nombran como tal. */
+  var menusVisibles = MENUS_COMPARTIR.filter(function(m){
+    return m.items.some(function(it){ return !!plato(it.key); });
+  });
+  if(menusVisibles.length){
+    var secM = el('<div class="seccion"></div>');
+    secM.appendChild(el('<h3>Menús para compartir</h3>'));
+    menusVisibles.forEach(function(m){
+      secM.appendChild(el(
+        '<div class="menu-c">'
+        +'<div class="nom">'+esc(m.nombre)+'</div>'
+        +'<div class="desc">'+esc(m.desc)+'</div>'
+        +(m.para?'<div class="para">'+esc(m.para)+'</div>':'')
+        +'<div class="pie">'
+        +'<div class="precio">'+fmt(totalMenu(m))+'</div>'
+        +'<button class="agregar" data-menu="'+esc(m.nombre)+'">Agregar el menú</button>'
+        +'</div></div>'));
+    });
+    main.appendChild(secM);
+    secM.querySelectorAll('[data-menu]').forEach(function(b){
+      b.onclick=function(){ agregarMenu(b.getAttribute('data-menu')); };
+    });
+  }
 
   CARTA.forEach(function(s){
     var sec = el('<div class="seccion"></div>');
