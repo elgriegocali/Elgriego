@@ -106,7 +106,7 @@ var PRODUCTOS = [
  {key:'gyros_pollo',  nombre:'Gyros de Pollo',        precio:24000, unidad:'por gyro',      fc:18.0, clase:'Estrella'},
  {key:'gyros_bondiola',nombre:'Gyros de Bondiola',    precio:24000, unidad:'por gyro',      fc:19.3, clase:'Caballo de batalla', nota:'Solo eventos · mínimo 20 · no está en la carta del cliente'},
  {key:'kebab',        nombre:'Kebab Estilo Thanasis', precio:24000, unidad:'por porción',   fc:19.1, clase:'Rompecabezas', destacar:true},
- {key:'mousaka',      nombre:'Mousaka',               precio:30000, unidad:'350 g',         fc:null},
+ {key:'mousaka',      nombre:'Moussaka',               precio:30000, unidad:'350 g',         fc:null},
  {key:'pastitsio',    nombre:'Pastitsio',             precio:30000, unidad:'350 g',         fc:null},
  {key:'spanako',      nombre:'Spanakopitakia',        precio:22000, unidad:'6 empanadas',   fc:null},
  {key:'tiro',         nombre:'Tiropitakia',           precio:22000, unidad:'6 empanadas',   fc:62.2},
@@ -146,9 +146,9 @@ var UMBRAL = 150000;
 var BUNDLES = (typeof MENUS!=='undefined' && MENUS && MENUS.length) ? MENUS : [
  {nombre:'Familiar 1', desc:'2 Gyros · Ensalada Griega · Pan Pita',
   items:[{key:'gyros_cerdo',qty:2},{key:'ens_griega',qty:1},{key:'pita',qty:1}]},
- {nombre:'Familiar 2', desc:'2 Mousaka · Ensalada Griega · Spanakopitakia · Tzatziki · Pan Pita',
+ {nombre:'Familiar 2', desc:'2 Moussaka · Ensalada Griega · Spanakopitakia · Tzatziki · Pan Pita',
   items:[{key:'mousaka',qty:2},{key:'ens_griega',qty:1},{key:'spanako',qty:1},{key:'tzatziki',qty:1},{key:'pita',qty:1}]},
- {nombre:'Familiar 3', desc:'3 Mousaka · 2 Kebab · Ensalada Griega · Spanakopitakia',
+ {nombre:'Familiar 3', desc:'3 Moussaka · 2 Kebab · Ensalada Griega · Spanakopitakia',
   items:[{key:'mousaka',qty:3},{key:'kebab',qty:2},{key:'ens_griega',qty:1},{key:'spanako',qty:1}]}
 ];
 var TIPOS = ['Domicilio','Catering','Pack Congelado'];
@@ -1732,7 +1732,7 @@ function recetasBase(){
    r_bondiola:{k:'r_bondiola',n:'Gyros de bondiola (carne)',base:'bondiola',baseG:1500,factor:1,lineas:[['bondiola',1],['aceite_oliva',0.045],['vin_blanco',0.04],['sal',0.01],['tomillo',0.002],['pim_negra',0.00235],['pim_dulce',0.00235],['ajo',0.005],['comino',0.002],['oregano',0.002]]},
    r_pollo:{k:'r_pollo',n:'Gyros de pollo (carne)',base:'pollo',baseG:1500,factor:1,lineas:[['pollo',1],['aceite_oliva',0.06],['limon',0.08],['ajo',0.005],['oregano',0.006],['sal',0.012],['pim_negra',0.0023],['miel',0.015]]},
    r_kebab:{k:'r_kebab',n:'Kebab Thanasis (carne)',base:'carne_molida',baseG:1000,factor:1,lineas:[['carne_molida',1],['cebolla',0.15],['sal',0.01],['perejil',0.03],['comino',0.01],['pim_negra',0.004],['aceite_oliva',0.036],['ajo',0.01],['cilantro_m',0.003],['paprika',0.005],['cayena',0.002],['pan_rallado',0.06],['agua',0.04]]},
-   r_mousaka:{k:'r_mousaka',n:'Mousaka',base:'carne_molida',baseG:123,factor:0.588,nota:'Pérdida por cocción 41,15%: 5.948 g crudo → 3.500 g cocido. Incluye bechamel y berenjena.',lineas:[['carne_molida',1],['cebolla',0.3252032520325203],['aceite_oliva',0.075],['ajo',0.008],['pasta_tomate',0.057],['tomate_lata',0.4],['vino_tinto',0.11],['sal',0.015],['pim_negra',0.004],['leche',1],['mantequilla',0.1],['harina',0.1],['parmesano',0.05],['huevo',0.04],['berenjena',2.4471544715447155]]},
+   r_mousaka:{k:'r_mousaka',n:'Moussaka',base:'carne_molida',baseG:123,factor:0.588,nota:'Pérdida por cocción 41,15%: 5.948 g crudo → 3.500 g cocido. Incluye bechamel y berenjena.',lineas:[['carne_molida',1],['cebolla',0.3252032520325203],['aceite_oliva',0.075],['ajo',0.008],['pasta_tomate',0.057],['tomate_lata',0.4],['vino_tinto',0.11],['sal',0.015],['pim_negra',0.004],['leche',1],['mantequilla',0.1],['harina',0.1],['parmesano',0.05],['huevo',0.04],['berenjena',2.4471544715447155]]},
    r_ens_griega:{k:'r_ens_griega',n:'Ensalada Griega',base:'tomate',baseG:100,factor:1,alerta:'Revisar ratios: 3 g de feta y 5 g de pepino para una porción de 250 g parece un error de coma decimal (¿0,30 y 0,51?).',lineas:[['tomate',1],['pepino',0.051],['cebolla_roja',0.028],['feta',0.03],['pim_blanca',0.002],['sal',0.004],['aceite_oliva',0.03],['oregano',0.005]]},
    r_spanakopitakia:{k:'r_spanakopitakia',n:'Spanakopitakia',base:'espinaca',baseG:83,factor:0.5,lineas:[['espinaca',1],['puerro',2.44],['feta',0.36],['aceite_oliva',0.0741869918699187],['cebolla_roja',0.7951807228915663]]},
    /* Va crudo dentro del pan, en los tres gyros y en el kebab: 30 g de tomate

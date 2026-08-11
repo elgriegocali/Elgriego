@@ -23,13 +23,13 @@ var MENUS = [
   },
   {
     nombre:'Familiar 2',
-    desc:'2 Mousaka · Ensalada Griega · Spanakopitakia · Tzatziki · Pan Pita',
+    desc:'2 Moussaka · Ensalada Griega · Spanakopitakia · Tzatziki · Pan Pita',
     para:'Para 3 o 4 personas',
     items:[{key:'mousaka',qty:2},{key:'ens_griega',qty:1},{key:'spanako',qty:1},{key:'tzatziki',qty:1},{key:'pita',qty:1}]
   },
   {
     nombre:'Familiar 3',
-    desc:'3 Mousaka · 2 Kebab · Ensalada Griega · Spanakopitakia',
+    desc:'3 Moussaka · 2 Kebab · Ensalada Griega · Spanakopitakia',
     para:'Para 5 o 6 personas',
     items:[{key:'mousaka',qty:3},{key:'kebab',qty:2},{key:'ens_griega',qty:1},{key:'spanako',qty:1}]
   }
