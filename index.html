@@ -735,13 +735,47 @@ function tarjetaPedido(p){
   return card;
 }
 
+/* Los clientes no son una tabla aparte: se derivan de los pedidos.
+   La identidad es el WhatsApp, y si no hay, el nombre — la misma regla que usan
+   Clientes y el selector de Nuevo, para que no se puedan desincronizar. */
+function clientesDerivados(){
+  var mapa={};
+  pedidos.filter(function(p){return p.estado!=='Cancelado';}).forEach(function(p){
+    var k=(p.telefono||p.cliente||'').trim(); if(!k) return;
+    if(!mapa[k]) mapa[k]={clave:k, nombre:p.cliente||k, telefono:p.telefono||'',
+                          pedidos:0, total:0, ultima:p.fecha, ultimasNotas:''};
+    var m=mapa[k];
+    m.pedidos++; m.total+=calc(p.items).venta+(p.domicilio||0);
+    if(p.fecha>=m.ultima){ m.ultima=p.fecha; m.ultimasNotas=p.notas||''; }
+    if(p.cliente) m.nombre=p.cliente;
+  });
+  return Object.keys(mapa).map(function(k){ return mapa[k]; });
+}
+
 /* ================= NUEVO ================= */
 function renderNuevo(){
   var items={}; var domicilioManual=0;
 
+  /* clientes ya registrados, del más reciente al más antiguo: quien pidió hace
+     poco es quien más probablemente vuelve a pedir */
+  var clientes=clientesDerivados().sort(function(a,b){
+    return a.ultima<b.ultima?1:a.ultima>b.ultima?-1:0;
+  });
+
   var card1=el('<div class="card"><h2>Nuevo pedido</h2>'
-    +'<label class="f">Cliente</label><input class="f" id="n-cliente" placeholder="Nombre">'
+    +(clientes.length
+      ? '<label class="f">Cliente</label>'
+        +'<select class="f" id="n-quien">'
+        +'<option value="">— Cliente nuevo —</option>'
+        +clientes.map(function(c,i){
+            return '<option value="'+i+'">'+esc(c.nombre)
+              +' · '+c.pedidos+' pedido'+(c.pedidos>1?'s':'')+'</option>';
+          }).join('')
+        +'</select>'
+      : '')
+    +'<label class="f">Nombre</label><input class="f" id="n-cliente" placeholder="Nombre">'
     +'<label class="f">WhatsApp</label><input class="f" id="n-tel" placeholder="310 653 1071" inputmode="tel">'
+    +'<div class="muted small" id="n-quien-info" style="margin-top:4px"></div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
     +'<div><label class="f">Tipo</label><select class="f" id="n-tipo">'+TIPOS.map(function(t){return '<option>'+t+'</option>';}).join('')+'</select></div>'
     +'<div><label class="f">Canal</label><select class="f" id="n-canal">'+CANALES.map(function(c){return '<option>'+c+'</option>';}).join('')+'</select></div>'
@@ -835,6 +869,37 @@ function renderNuevo(){
       }
     } else { dom.innerHTML=''; }
   }
+  /* elegir un cliente rellena nombre y WhatsApp; los campos siguen editables
+     por si cambió el número o el pedido es para otra persona */
+  var selQuien=card1.querySelector('#n-quien');
+  if(selQuien){
+    var info=card1.querySelector('#n-quien-info');
+    var notasPuestas=null;   /* la dirección que copiamos nosotros, para no dejarla pegada
+                                si después se cambia de cliente */
+    selQuien.addEventListener('change', function(){
+      var c=clientes[parseInt(selQuien.value,10)];
+      var inNombre=card1.querySelector('#n-cliente');
+      var inTel=card1.querySelector('#n-tel');
+      var taNotas=card3.querySelector('#n-notas');
+      if(notasPuestas!==null && taNotas.value===notasPuestas){ taNotas.value=''; }
+      notasPuestas=null;
+      if(!c){ inNombre.value=''; inTel.value=''; info.innerHTML=''; inNombre.focus(); return; }
+      inNombre.value=c.nombre||'';
+      inTel.value=c.telefono||'';
+      var d=Math.floor((new Date(hoyISO())-new Date(c.ultima))/86400000);
+      info.innerHTML=esc(c.pedidos+' pedido'+(c.pedidos>1?'s':'')+' · '+fmt(c.total)
+        +' · último hace '+d+' día'+(d!==1?'s':''))
+        + (c.ultimasNotas ? ' · <a href="#" id="n-usar-notas" style="color:var(--azul)">usar la dirección del último pedido</a>' : '');
+      var link=info.querySelector('#n-usar-notas');
+      if(link) link.addEventListener('click', function(e){
+        e.preventDefault();
+        card3.querySelector('#n-notas').value=c.ultimasNotas;
+        notasPuestas=c.ultimasNotas;
+        link.outerHTML='<span class="muted">dirección copiada</span>';
+      });
+    });
+  }
+
   card1.querySelector('#n-tipo').addEventListener('change', actualizarTotal);
   actualizarTotal();
 
@@ -1544,16 +1609,7 @@ function backupCard(){
 
 /* ================= CLIENTES ================= */
 function renderClientes(){
-  var mapa={};
-  pedidos.filter(function(p){return p.estado!=='Cancelado';}).forEach(function(p){
-    var k=(p.telefono||p.cliente||'').trim(); if(!k) return;
-    if(!mapa[k]) mapa[k]={nombre:p.cliente||k, telefono:p.telefono, pedidos:0, total:0, ultima:p.fecha};
-    var m=mapa[k];
-    m.pedidos++; m.total+=calc(p.items).venta+(p.domicilio||0);
-    if(p.fecha>m.ultima) m.ultima=p.fecha;
-    if(p.cliente) m.nombre=p.cliente;
-  });
-  var lista=Object.keys(mapa).map(function(k){return mapa[k];}).sort(function(a,b){return b.total-a.total;});
+  var lista=clientesDerivados().sort(function(a,b){return b.total-a.total;});
 
   var card=el('<div class="card"><h2>Clientes ('+lista.length+')</h2>'
     +'<div class="muted small" style="margin-bottom:8px">Retención por WhatsApp es la prioridad #2: las clientas marcadas “reactivar” llevan más de 30 días sin pedir.</div></div>');
